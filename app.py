@@ -193,9 +193,9 @@ def main():
                             else:
                                 last_command = '<'
                                 same_command_count = 0
-                            if same_command_count > 4 and same_command_count < 50:
+                            if same_command_count > 4 and same_command_count < 30:
                                 cv2.putText(frame, '<', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            if same_command_count > 50:
+                            if same_command_count > 30:
                                 last_command = '['
                                 cv2.putText(frame, '[', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                         # Body to the right
@@ -205,9 +205,9 @@ def main():
                             else:
                                 last_command = '>'
                                 same_command_count = 0
-                            if same_command_count > 4 and same_command_count < 50:
+                            if same_command_count > 4 and same_command_count < 30:
                                 cv2.putText(frame, '>', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            if same_command_count > 50:
+                            if same_command_count > 30:
                                 last_command = ']'
                                 cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             
