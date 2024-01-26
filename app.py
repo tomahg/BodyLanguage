@@ -162,89 +162,101 @@ def main():
                 elbow_r = detector.findAngle(frame, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST)
                 elbow_l = detector.findAngle(frame, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST)
 
-                if True:
-                    # Arms horizontal and elbows straight
-                    elbows_straight = elbow_l > 145 and elbow_r > 145
-                    left_arm_horizonal = abs(lmList[LEFT_SHOULDER][2] - lmList[LEFT_WRIST][2]) < 50
-                    right_arm_horizonal = abs(lmList[RIGHT_SHOULDER][2] - lmList[RIGHT_WRIST][2]) < 50
-                    if elbows_straight and left_arm_horizonal and right_arm_horizonal:
-                        if last_command == '.':
+                # Arms horizontal and elbows straight
+                elbows_straight = elbow_l > 145 and elbow_r > 145
+                left_arm_horizonal = abs(lmList[LEFT_SHOULDER][2] - lmList[LEFT_WRIST][2]) < 50
+                right_arm_horizonal = abs(lmList[RIGHT_SHOULDER][2] - lmList[RIGHT_WRIST][2]) < 50
+                if elbows_straight and left_arm_horizonal and right_arm_horizonal:
+                    if last_command == '.':
+                        same_command_count += 1
+                    else:
+                        last_command = '.'
+                        code += last_command
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY:
+                        cv2.putText(frame, '.', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+
+                # Double-up, not included in original spec
+                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                    if last_command == '++':
+                        same_command_count += 1
+                    else:
+                        last_command = '++'
+                        if code.endswith('+++++'):
+                            code += ' ++'
+                        elif code.endswith('++++'):
+                            code += '+ +'
+                        else:
+                            code += last_command
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY:
+                        cv2.putText(frame, '++', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
+               
+                # Hands up!
+                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                    if last_command != '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time
+                        if last_command == '+':
                             same_command_count += 1
                         else:
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY:
-                            cv2.putText(frame, '.', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
-                        last_command = '.'
-                    else:
-                        # Double-up, not included in original spec
-                        if lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
-                            if last_command == '++':
-                                same_command_count += 1
-                            else:
-                                same_command_count = 0
-                            if same_command_count > COMMAND_DELAY:
-                                cv2.putText(frame, '++', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
-                            last_command = '++'
-                        # Hands up!
-                        elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
-                            if last_command != '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time
-                                if last_command == '+':
-                                    same_command_count += 1
-                                else:
-                                    same_command_count = 0
-                                if same_command_count > COMMAND_DELAY:
-                                    cv2.putText(frame, '+', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
-                                last_command = '+'
-                        # Duck, shoulders below threshold
-                        elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
-                            if last_command == '-':
-                                same_command_count += 1
-                            else:
-                                same_command_count = 0
-                            if same_command_count > COMMAND_DELAY:
-                                cv2.putText(frame, '-', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            last_command = '-'
-                        # Body to the left
-                        elif lmList[LEFT_SHOULDER][1] < 200 and lmList[RIGHT_SHOULDER][1] < 200:
-                            if last_command == '<' or last_command == '[':
-                                same_command_count += 1
-                            else:
-                                last_command = '<'
-                                same_command_count = 0
-                            if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                                cv2.putText(frame, '<', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            if same_command_count > 30:
-                                last_command = '['
-                                cv2.putText(frame, '[', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                        # Body to the right
-                        elif lmList[LEFT_SHOULDER][1] > 400 and lmList[RIGHT_SHOULDER][1] > 400:
-                            if last_command == '>' or last_command == ']':
-                                same_command_count += 1
-                            else:
-                                last_command = '>'
-                                same_command_count = 0
-                            if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                                cv2.putText(frame, '>', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            if same_command_count > 30:
-                                last_command = ']'
-                                cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                            
-                        elif True:
-                            if code.endswith('+++++') and last_command == '++':
-                                code += ' ++'
-                            elif code.endswith('++++') and last_command == '++':
-                                code += '+ +'
-                            elif (code.endswith('+++++') and last_command.endswith('+')) or (code.endswith('-----') and last_command.endswith('-')):
+                            last_command = '+'
+                            if code.endswith('+++++'):
                                 code += ' ' + last_command
                             else:
                                 code += last_command
-
                             same_command_count = 0
-                            last_command = ''
-                        elif True: # Clap, and no second clap for 1 second
-                            pass
-                        elif True: # Clap twice
-                            pass
+                        if same_command_count > COMMAND_DELAY:
+                            cv2.putText(frame, '+', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
+                
+                # Duck, shoulders below threshold
+                elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
+                    if last_command == '-':
+                        same_command_count += 1
+                    else:
+                        last_command = '-'
+                        if code.endswith('----'):
+                            code += ' ' + last_command
+                        else:
+                            code += last_command
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY:
+                        cv2.putText(frame, '-', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                
+                # Body to the left
+                elif lmList[LEFT_SHOULDER][1] < 200 and lmList[RIGHT_SHOULDER][1] < 200:
+                    if last_command == '<' or last_command == '[':
+                        same_command_count += 1
+                    else:
+                        last_command = '<'
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY and same_command_count < 30:
+                        cv2.putText(frame, '<', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                    if same_command_count > 30 and last_command != '[':
+                        last_command = '['
+                        code += last_command
+                        cv2.putText(frame, '[', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                
+                # Body to the right
+                elif lmList[LEFT_SHOULDER][1] > 400 and lmList[RIGHT_SHOULDER][1] > 400:
+                    if last_command == '>' or last_command == ']':
+                        same_command_count += 1
+                    else:
+                        last_command = '>'
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY and same_command_count < 30:
+                        cv2.putText(frame, '>', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                    if same_command_count > 30 and last_command != ']':
+                        last_command = ']'
+                        code += last_command
+                        cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                else:
+                    if last_command in ['<','>']:
+                        code += last_command
+                    same_command_count = 0
+                    last_command = ''
+                #elif True: # Clap, and no second clap for 1 second
+                #    pass
+                #elif True: # Clap twice
+                #    pass
 
             cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
             cv2.imshow('BodyFuck', annotated_frame)
@@ -273,7 +285,7 @@ if __name__ == "__main__":
     main()
 
 # fiks implementering av hopp. Albue over munn? og håndledd albue, med minst halve underarms lengde?
-# fiks implementering av print også
+# fiks implementering av print (.) også
 # fiks visning av enkelttegn, midt på, eller i hjørne?
 # implementer klapp-deteksjon
 # implementer brainfuck-interpreter, og vis resultatet
