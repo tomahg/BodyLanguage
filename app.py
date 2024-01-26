@@ -96,6 +96,7 @@ def main():
 
     FONT_SIZE = 10
     FONT_WEIGHT = 10
+    CHARS_PER_LINE = 25
 
     show_code_lines = True
     show_grid_lines = False
@@ -126,8 +127,19 @@ def main():
                 cv2.line(frame, (0, 440), (w, 440), (111,111,111), 2)
 
             if show_code_lines:
+                length_of_code = len(code)
+                code_to_print = code
+                if length_of_code > 3 * CHARS_PER_LINE:
+                    code_to_print = '...' + code[length_of_code - 3 * CHARS_PER_LINE:]  # Probably not a good idea to use ... as it's also code?
+
                 cv2.rectangle(frame, (0, 0), (w, 40), (0,0,0), -1)
-                cv2.putText(frame, code, (5, 30), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
+                cv2.putText(frame, code_to_print[:CHARS_PER_LINE], (5, 30), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
+                if len(code_to_print) > CHARS_PER_LINE:
+                    cv2.rectangle(frame, (0, 40), (w, 80), (0,0,0), -1)
+                    cv2.putText(frame, code_to_print[CHARS_PER_LINE:2*CHARS_PER_LINE], (5, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
+                if len(code_to_print) > 2 * CHARS_PER_LINE:
+                    cv2.rectangle(frame, (0, 80), (w, 120), (0,0,0), -1)
+                    cv2.putText(frame, code_to_print[2*CHARS_PER_LINE:], (5, 110), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
 
             lmList = detector.findPosition(frame, False)
             if len(lmList):
@@ -149,7 +161,7 @@ def main():
                         last_command = '.'
                     else:
                         # At least wrist well above nose
-                        if (lmList[LEFT_WRIST][2] + 125) < lmList[NOSE][2] and (lmList[RIGHT_WRIST][2] + 125) < lmList[NOSE][2]: 
+                        if lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
                             if last_command == '++':
                                 same_command_count += 1
                             else:
@@ -157,7 +169,7 @@ def main():
                             if same_command_count > 4:
                                 cv2.putText(frame, '++', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                             last_command = '++'
-                        elif (lmList[LEFT_WRIST][2] + 125) < lmList[NOSE][2] or (lmList[RIGHT_WRIST][2] + 125) < lmList[NOSE][2]: 
+                        elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
                             if last_command == '+':
                                 same_command_count += 1
                             else:
@@ -200,16 +212,16 @@ def main():
                                 cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             
                         elif True:
-                            if same_command_count > 4:
-                                code += last_command
-                                if code.endswith('++++++') or code.endswith('------'):
-                                    code = code[:-1] + ' ' + code[-1:]
-                                elif code.endswith('+++++') or code.endswith('-----'):
-                                    code += ' '
+                            code += last_command
+                            if code.endswith('++++++') or code.endswith('------'):
+                                code = code[:-1] + ' ' + code[-1:]
+                            elif code.endswith('+++++') or code.endswith('-----'):
+                                code += ' '
+
 
                             same_command_count = 0
                             last_command = ''
-                        elif True: # Clap, and no second clap for 1 seond
+                        elif True: # Clap, and no second clap for 1 second
                             pass
                         elif True: # Clap twice
                             pass
