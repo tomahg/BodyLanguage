@@ -101,6 +101,8 @@ def main():
     MAX_LINES_OF_CODE = 4
     HORIZONTAL_MARGIN = 10
 
+    COMMAND_DELAY = 0
+
     show_code_lines = True
     show_grid_lines = False
 
@@ -108,6 +110,8 @@ def main():
     same_command_count = 0
     last_keypress = ''
     code = ''
+
+
 
     print('1: Toggle code view')
     print('2: Toggle grid')
@@ -168,34 +172,36 @@ def main():
                             same_command_count += 1
                         else:
                             same_command_count = 0
-                        if same_command_count > 4:
+                        if same_command_count > COMMAND_DELAY:
                             cv2.putText(frame, '.', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
                         last_command = '.'
                     else:
-                        # At least wrist well above nose
+                        # Double-up, not included in original spec
                         if lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
                             if last_command == '++':
                                 same_command_count += 1
                             else:
                                 same_command_count = 0
-                            if same_command_count > 4:
+                            if same_command_count > COMMAND_DELAY:
                                 cv2.putText(frame, '++', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                             last_command = '++'
+                        # Hands up!
                         elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
-                            if last_command == '+':
-                                same_command_count += 1
-                            else:
-                                same_command_count = 0
-                            if same_command_count > 4:
-                                cv2.putText(frame, '+', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
-                            last_command = '+'
+                            if last_command != '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time
+                                if last_command == '+':
+                                    same_command_count += 1
+                                else:
+                                    same_command_count = 0
+                                if same_command_count > COMMAND_DELAY:
+                                    cv2.putText(frame, '+', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
+                                last_command = '+'
                         # Duck, shoulders below threshold
                         elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
                             if last_command == '-':
                                 same_command_count += 1
                             else:
                                 same_command_count = 0
-                            if same_command_count > 4:
+                            if same_command_count > COMMAND_DELAY:
                                 cv2.putText(frame, '-', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             last_command = '-'
                         # Body to the left
@@ -205,7 +211,7 @@ def main():
                             else:
                                 last_command = '<'
                                 same_command_count = 0
-                            if same_command_count > 4 and same_command_count < 30:
+                            if same_command_count > COMMAND_DELAY and same_command_count < 30:
                                 cv2.putText(frame, '<', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             if same_command_count > 30:
                                 last_command = '['
@@ -217,7 +223,7 @@ def main():
                             else:
                                 last_command = '>'
                                 same_command_count = 0
-                            if same_command_count > 4 and same_command_count < 30:
+                            if same_command_count > COMMAND_DELAY and same_command_count < 30:
                                 cv2.putText(frame, '>', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             if same_command_count > 30:
                                 last_command = ']'
@@ -229,7 +235,6 @@ def main():
                                 code = code[:-1] + ' ' + code[-1:]
                             elif code.endswith('+++++') or code.endswith('-----'):
                                 code += ' '
-
 
                             same_command_count = 0
                             last_command = ''
