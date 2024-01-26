@@ -130,7 +130,7 @@ def main():
 
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
-                cv2.line(frame, (400, 0), (400, h), (111,111,111), 2)
+                cv2.line(frame, (440, 0), (440, h), (111,111,111), 2)
                 cv2.line(frame, (0, 440), (w, 440), (111,111,111), 2)
 
             if show_code_lines:
@@ -174,7 +174,7 @@ def main():
                         code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '.', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        cv2.putText(frame, '.', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
                 elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
@@ -196,7 +196,8 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '++', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
+                        cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
                 # Hands up!
                 elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
@@ -211,7 +212,10 @@ def main():
                                 code += last_command
                             same_command_count = 0
                         if same_command_count > COMMAND_DELAY:
-                            cv2.putText(frame, '+', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
+                            if lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                                cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
+                            if lmList[LEFT_WRIST][2] < lmList[NOSE][2]:
+                                cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
                 
                 # Duck, shoulders below threshold
                 elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
@@ -225,7 +229,7 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '-', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        cv2.putText(frame, '-', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the left
                 elif lmList[LEFT_SHOULDER][1] < 200 and lmList[RIGHT_SHOULDER][1] < 200:
@@ -235,25 +239,27 @@ def main():
                         last_command = '<'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        cv2.putText(frame, '<', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                    if same_command_count > 30 and last_command != '[':
-                        last_command = '['
-                        code += last_command
-                        cv2.putText(frame, '[', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        cv2.putText(frame, '<', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                    if same_command_count > 30:
+                        if last_command != '[':
+                            last_command = '['
+                            code += last_command
+                        cv2.putText(frame, '[', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the right
-                elif lmList[LEFT_SHOULDER][1] > 400 and lmList[RIGHT_SHOULDER][1] > 400:
+                elif lmList[LEFT_SHOULDER][1] > 440 and lmList[RIGHT_SHOULDER][1] > 440:
                     if last_command == '>' or last_command == ']':
                         same_command_count += 1
                     else:
                         last_command = '>'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        cv2.putText(frame, '>', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                    if same_command_count > 30 and last_command != ']':
-                        last_command = ']'
-                        code += last_command
-                        cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        cv2.putText(frame, '>', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                    if same_command_count > 30:
+                        if last_command != ']':
+                            last_command = ']'
+                            code += last_command
+                        cv2.putText(frame, ']', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -296,4 +302,3 @@ if __name__ == "__main__":
 # implementer klapp-deteksjon
 # implementer brainfuck-interpreter, og vis resultatet
 # tilpass hvilke pose features som vises på video streamen
-# fiks fin bakgrunn på current symbol
