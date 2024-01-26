@@ -3,8 +3,7 @@ import mediapipe as mp
 import math
 from mediapipe.python.solutions.pose import PoseLandmark
 
-class poseDetector() :
-    
+class poseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
                  enable_segmentation=False, smooth_segmentation=True,
                  detectionCon=0.5, trackCon=0.5):
@@ -77,7 +76,9 @@ class poseDetector() :
             #cv2.putText(img, str(int(angle)), (x2-50, y2+50), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
         return angle
 
-
+def get_text_width(text, font_face, font_scale, font_line_thickness):
+    ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
+    return txt_w
 
 def main():
     detector = poseDetector()
@@ -96,7 +97,9 @@ def main():
 
     FONT_SIZE = 10
     FONT_WEIGHT = 10
-    CHARS_PER_LINE = 25
+    MIN_CHARS_PER_LINE = 15
+    MAX_LINES_OF_CODE = 4
+    HORIZONTAL_MARGIN = 10
 
     show_code_lines = True
     show_grid_lines = False
@@ -127,19 +130,28 @@ def main():
                 cv2.line(frame, (0, 440), (w, 440), (111,111,111), 2)
 
             if show_code_lines:
-                length_of_code = len(code)
-                code_to_print = code
-                if length_of_code > 3 * CHARS_PER_LINE:
-                    code_to_print = '...' + code[length_of_code - 3 * CHARS_PER_LINE:]  # Probably not a good idea to use ... as it's also code?
+                lines_of_code = []
+                code_left_to_print = code.strip()
+                while len(code_left_to_print) > 0:
+                    if len(code_left_to_print) > MIN_CHARS_PER_LINE:
+                        char_count = MIN_CHARS_PER_LINE
+                        line_width = get_text_width(code_left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
+                        while line_width < w - HORIZONTAL_MARGIN and char_count < len(code_left_to_print):
+                            char_count += 1
+                            line_width = get_text_width(code_left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
+                        if line_width > w - HORIZONTAL_MARGIN:
+                            char_count -= 1
+                        if char_count > len(code_left_to_print):
+                            char_count = len(code_left_to_print)
+                        lines_of_code.append(code_left_to_print[:char_count]) 
+                        code_left_to_print = code_left_to_print[char_count:]
+                    else:
+                        lines_of_code.append(code_left_to_print)
+                        code_left_to_print = ''
 
-                cv2.rectangle(frame, (0, 0), (w, 40), (0,0,0), -1)
-                cv2.putText(frame, code_to_print[:CHARS_PER_LINE], (5, 30), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
-                if len(code_to_print) > CHARS_PER_LINE:
-                    cv2.rectangle(frame, (0, 40), (w, 80), (0,0,0), -1)
-                    cv2.putText(frame, code_to_print[CHARS_PER_LINE:2*CHARS_PER_LINE], (5, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
-                if len(code_to_print) > 2 * CHARS_PER_LINE:
-                    cv2.rectangle(frame, (0, 80), (w, 120), (0,0,0), -1)
-                    cv2.putText(frame, code_to_print[2*CHARS_PER_LINE:], (5, 110), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
+                for i, line_of_code in enumerate(lines_of_code[-MAX_LINES_OF_CODE:]):
+                    cv2.rectangle(frame, (0, i * 36), (w, 36 + i * 36), (0,0,0), -1)
+                    cv2.putText(frame, line_of_code.strip(), (int(HORIZONTAL_MARGIN / 2), i * 36 + 28), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
 
             lmList = detector.findPosition(frame, False)
             if len(lmList):
@@ -252,10 +264,12 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-# skriv ut programmet øverst, hvit på svart bakgrunn
-# ta høyde for to linjer?
+# fiks implementering av hopp. Albue over munn? og håndledd albue, med minst halve underarms lengde?
+# fiks implementering av print også
 # fiks visning av enkelttegn, midt på, eller i hjørne?
 # implementer klapp-deteksjon
 # implementer brainfuck-interpreter, og vis resultatet
-#gruppering av + / 1
+# tilpass hvilke pose features som vises på video streamen
+# fiks slik at ikke ++ blir til +
+# ikke space etter +++++ ]
+# fiks fin bakgrunn på current symbol
