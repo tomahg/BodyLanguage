@@ -230,11 +230,14 @@ def main():
                                 cv2.putText(frame, ']', (200, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                             
                         elif True:
-                            code += last_command
-                            if code.endswith('++++++') or code.endswith('------'):
-                                code = code[:-1] + ' ' + code[-1:]
-                            elif code.endswith('+++++') or code.endswith('-----'):
-                                code += ' '
+                            if code.endswith('+++++') and last_command == '++':
+                                code += ' ++'
+                            elif code.endswith('++++') and last_command == '++':
+                                code += '+ +'
+                            elif (code.endswith('+++++') and last_command.endswith('+')) or (code.endswith('-----') and last_command.endswith('-')):
+                                code += ' ' + last_command
+                            else:
+                                code += last_command
 
                             same_command_count = 0
                             last_command = ''
@@ -275,6 +278,5 @@ if __name__ == "__main__":
 # implementer klapp-deteksjon
 # implementer brainfuck-interpreter, og vis resultatet
 # tilpass hvilke pose features som vises på video streamen
-# fiks slik at ikke ++ blir til +
-# ikke space etter +++++ ]
 # fiks fin bakgrunn på current symbol
+# vurder å tolke tegn uten å returnere til grunnposisjon
