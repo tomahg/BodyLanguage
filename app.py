@@ -180,6 +180,12 @@ def main():
                 elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
                     if last_command == '++':
                         same_command_count += 1
+                    elif last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
+                        last_command = '++'
+                        if code.endswith('+++++'):
+                            code += ' +'
+                        else:
+                            code += '+'
                     else:
                         last_command = '++'
                         if code.endswith('+++++'):
@@ -286,9 +292,8 @@ if __name__ == "__main__":
 
 # fiks implementering av hopp. Albue over munn? og håndledd albue, med minst halve underarms lengde?
 # fiks implementering av print (.) også
-# fiks visning av enkelttegn, midt på, eller i hjørne?
+# fiks visning av enkelttegn, midt på, eller i hjørne? Alpha? Rounded corners?
 # implementer klapp-deteksjon
 # implementer brainfuck-interpreter, og vis resultatet
 # tilpass hvilke pose features som vises på video streamen
 # fiks fin bakgrunn på current symbol
-# vurder å tolke tegn uten å returnere til grunnposisjon
