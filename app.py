@@ -2,7 +2,6 @@ import cv2
 import mediapipe as mp
 import math
 from mediapipe.python.solutions.pose import PoseLandmark
-import math
 
 class poseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -100,6 +99,8 @@ def main():
     RIGHT_ELBOW = PoseLandmark.RIGHT_ELBOW
     LEFT_WRIST = PoseLandmark.LEFT_WRIST
     RIGHT_WRIST = PoseLandmark.RIGHT_WRIST
+    LEFT_INDEX = PoseLandmark.LEFT_INDEX
+    RIGHT_INDEX = PoseLandmark.RIGHT_INDEX
     LEFT_HIP = PoseLandmark.LEFT_HIP
     RIGHT_HIP = PoseLandmark.RIGHT_HIP
 
@@ -118,6 +119,14 @@ def main():
     same_command_count = 0
     last_keypress = ''
     code = ''
+
+    clap_count = 0
+    clap_stage = ''
+    clap_single_delay = 0
+    clap_closing_timeframe = 0
+    clap_display_for_frames = 0
+
+    print_lock = 0
 
 
     # Menu
@@ -182,7 +191,8 @@ def main():
                 if elbows_straight and left_arm_horizonal and right_arm_horizonal:
                     if last_command == '.':
                         same_command_count += 1
-                    elif last_command == 'default': # Avoid triggering double .
+                    elif print_lock == 0: # Avoid triggering double .
+                        print_lock = 1
                         last_command = '.'
                         code += last_command
                         same_command_count = 0
@@ -278,18 +288,60 @@ def main():
                 else:
                     if last_command in ['<','>']:
                         code += last_command
+                    last_command = ''
                     same_command_count = 0 
 
-                    if (last_command != 'default'):
-                        # Dummy command to identify default position with arms down
-                        shoulder_r = detector.find_angle(frame, LEFT_HIP, LEFT_SHOULDER, LEFT_ELBOW)
-                        shoulder_l = detector.find_angle(frame, RIGHT_HIP, RIGHT_SHOULDER, RIGHT_ELBOW)
-                        if shoulder_r < 60 and shoulder_l < 60:
-                            if lmList[LEFT_SHOULDER][1] < 440 and lmList[RIGHT_SHOULDER][1] < 440: # not too far right
-                                if lmList[LEFT_SHOULDER][1] > 200 and lmList[RIGHT_SHOULDER][1] > 200: # not too far left
-                                    last_command = 'default'
-                                    print('default')
-                        
+                    # Dummy command to identify default position with arms down
+                    # Clapping should be performed in this position. buy with wrists higher then elbows
+                    shoulder_r = detector.find_angle(frame, LEFT_HIP, LEFT_SHOULDER, LEFT_ELBOW)
+                    shoulder_l = detector.find_angle(frame, RIGHT_HIP, RIGHT_SHOULDER, RIGHT_ELBOW)
+                    if shoulder_r < 60 and shoulder_l < 60: # arms facing downwards
+                        if lmList[LEFT_SHOULDER][1] < 500 and lmList[RIGHT_SHOULDER][1] < 500: # not too far right
+                            if lmList[LEFT_SHOULDER][1] > 140 and lmList[RIGHT_SHOULDER][1] > 140: # not too far left
+                                last_command = 'default'
+                                print_lock = 0 # Must return to default between each print
+                                # Remember that right and left are mirrored
+                    if last_command == 'default' and clap_stage != 'print':
+                        if lmList[LEFT_INDEX][1] > lmList[LEFT_SHOULDER][1] and lmList[RIGHT_INDEX][1] < lmList[RIGHT_SHOULDER][1]:
+                            clap_stage = 'wide' 
+                            clap_closing_timeframe = 20    
+                        elif clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(lmList[LEFT_INDEX][1] - lmList[RIGHT_INDEX][1]) < int(half_upper_arm / 2):
+                            if lmList[LEFT_WRIST][2] < lmList[LEFT_ELBOW][2] and lmList[RIGHT_WRIST][2] < lmList[RIGHT_ELBOW][2] :
+                                clap_stage = 'clap'
+                                clap_count += 1
+                                print('clap', clap_count)
+                    if clap_count >= 2:
+                        if clap_stage == 'clap':
+                            code = ''
+                            clap_display_for_frames = 10
+                            clap_stage = 'print'
+                        if clap_stage == 'print':
+                            if clap_display_for_frames > 0:
+                                clap_display_for_frames -= 1
+                                cv2.putText(frame, 'Clap! Clap!', (120, 200), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
+                            else:
+                                clap_stage = ''
+                                clap_count = 0
+                                clap_single_delay = 0
+                    elif clap_count == 1:
+                        if clap_single_delay > 10 and clap_stage != 'print':
+                            clap_display_for_frames = 10
+                            clap_stage = 'print'
+                        if clap_stage == 'print':
+                            if clap_display_for_frames > 0:    
+                                clap_display_for_frames -= 1
+                                cv2.putText(frame, 'Clap!', (230, 200), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
+                            else:    
+                                clap_stage = ''
+                                clap_count = 0
+                                clap_single_delay = 0
+                        elif clap_stage == 'clap' or clap_stage == 'wide':
+                            clap_single_delay += 1
+                    elif clap_stage == 'wide' and clap_closing_timeframe > 0:
+                        if (clap_closing_timeframe > 0):
+                            print(clap_closing_timeframe)
+                        clap_closing_timeframe -= 1
+                      
 
                 #elif True: # Clap, and no second clap for 1 second
                 #    pass
@@ -322,8 +374,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-# fiks visning av enkelttegn, midt på, eller i hjørne? Alpha? Rounded corners?
-# implementer klapp-deteksjon
+# Forbedre klapp-deteksjon
+# fiks visning av enkelttegn, midt på? Alpha? Rounded corners?
 # implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
 # tilpass hvilke pose features som vises på video streamen
 # trykk tast/museknapp for å starte å ta imot kommandoer. 
