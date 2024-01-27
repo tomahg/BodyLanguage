@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import math
 from mediapipe.python.solutions.pose import PoseLandmark
+import math
 
 class poseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -46,7 +47,7 @@ class poseDetector() :
                     cv2.circle(img, (cx, cy), 5, (255,0,0), cv2.FILLED)
         return self.lmList
         
-    def findAngle(self, img, p1, p2, p3, draw=True):   
+    def find_angle(self, img, p1, p2, p3, draw=True):   
         #Get the landmarks
         x1, y1 = self.lmList[p1][1:]
         x2, y2 = self.lmList[p2][1:]
@@ -75,7 +76,14 @@ class poseDetector() :
             
             #cv2.putText(img, str(int(angle)), (x2-50, y2+50), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
         return angle
-
+    
+    def find_length(self, p1, p2):
+        #Get the landmarks
+        x1, y1 = self.lmList[p1][1:]
+        x2, y2 = self.lmList[p2][1:]
+        distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+        return distance
+    
 def get_text_width(text, font_face, font_scale, font_line_thickness):
     ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
     return txt_w
@@ -112,16 +120,16 @@ def main():
     code = ''
 
 
-
+    # Menu
     print('1: Toggle code view')
     print('2: Toggle grid')
     print('3: Backspace')
     print('4: Clear code')
 
     while cap.isOpened():
-        ret, flipped_frame = cap.read()
+        ready, flipped_frame = cap.read()
 
-        if ret:    
+        if ready:    
             frame = cv2.flip(flipped_frame, 1)
             annotated_frame = detector.findPose(frame, True)
 
@@ -159,13 +167,18 @@ def main():
 
             lmList = detector.findPosition(frame, False)
             if len(lmList):
-                elbow_r = detector.findAngle(frame, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST)
-                elbow_l = detector.findAngle(frame, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST)
+                elbow_r = detector.find_angle(frame, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST)
+                elbow_l = detector.find_angle(frame, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST)
+                upper_arm_l = detector.find_length(RIGHT_SHOULDER, RIGHT_ELBOW)
+                upper_arm_r = detector.find_length(RIGHT_SHOULDER, RIGHT_ELBOW)
+                half_upper_arm = int((upper_arm_l + upper_arm_r) / 4)
+                upper_arm = int((upper_arm_l + upper_arm_r) / 2)
 
-                # Arms horizontal and elbows straight
-                elbows_straight = elbow_l > 145 and elbow_r > 145
-                left_arm_horizonal = abs(lmList[LEFT_SHOULDER][2] - lmList[LEFT_WRIST][2]) < 50
-                right_arm_horizonal = abs(lmList[RIGHT_SHOULDER][2] - lmList[RIGHT_WRIST][2]) < 50
+                # Elbows straight
+                elbows_straight = elbow_l > 130 and elbow_r > 130
+                # Arms horizontal, less then half an upper arm off
+                left_arm_horizonal = abs(lmList[LEFT_SHOULDER][2] - lmList[LEFT_WRIST][2]) < half_upper_arm
+                right_arm_horizonal = abs(lmList[RIGHT_SHOULDER][2] - lmList[RIGHT_WRIST][2]) < half_upper_arm
                 if elbows_straight and left_arm_horizonal and right_arm_horizonal:
                     if last_command == '.':
                         same_command_count += 1
@@ -177,7 +190,7 @@ def main():
                         cv2.putText(frame, '.', (290, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
-                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] - upper_arm and lmList[RIGHT_WRIST][2] < lmList[NOSE][2] - upper_arm: 
                     if last_command == '++':
                         same_command_count += 1
                     elif last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
@@ -200,7 +213,7 @@ def main():
                         cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
                 # Hands up!
-                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] - upper_arm or lmList[RIGHT_WRIST][2] < lmList[NOSE][2] - upper_arm : 
                     if last_command == '+':
                         same_command_count += 1
                     elif last_command == '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time 
@@ -277,16 +290,16 @@ def main():
 
         if cv2.waitKey(1) == 27:  # 27 == ESC key
             break
-        elif cv2.waitKey(1) == ord('1') and last_keypress != '1':
+        elif cv2.waitKey(1) == ord('1') and last_keypress != '1': #Toggle code view
             last_keypress = '1'
             show_code_lines = not show_code_lines
-        elif cv2.waitKey(1) == ord('2') and last_keypress != '2':
+        elif cv2.waitKey(1) == ord('2') and last_keypress != '2': #Toggle grid
             last_keypress = '2'
             show_grid_lines = not show_grid_lines
-        elif cv2.waitKey(1) == ord('3') and last_keypress != '3':
+        elif cv2.waitKey(1) == ord('3') and last_keypress != '3': #Backspace
             last_keypress = '3'
             code = code[:-1]
-        elif cv2.waitKey(1) == ord('4') and last_keypress != '4':
+        elif cv2.waitKey(1) == ord('4') and last_keypress != '4': #Clear code
             last_keypress = '4'
             code = ''
         else:
@@ -298,9 +311,8 @@ def main():
 if __name__ == "__main__":
     main()
 
-# fiks implementering av hopp. Albue over munn? og håndledd albue, med minst halve underarms lengde?
-# fiks implementering av print (.) også
 # fiks visning av enkelttegn, midt på, eller i hjørne? Alpha? Rounded corners?
 # implementer klapp-deteksjon
-# implementer brainfuck-interpreter, og vis resultatet
+# implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
 # tilpass hvilke pose features som vises på video streamen
+# trykk tast/museknapp for å starte å ta imot kommandoer. 
