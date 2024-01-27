@@ -174,7 +174,7 @@ def main():
                         code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '.', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        cv2.putText(frame, '.', (290, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
                 elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] and lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
@@ -201,22 +201,24 @@ def main():
                
                 # Hands up!
                 elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] or lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
-                    if last_command != '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time
-                        if last_command == '+':
-                            same_command_count += 1
+                    if last_command == '+':
+                        same_command_count += 1
+                    elif last_command == '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time 
+                        same_command_count += 1
+                    else:
+                        last_command = '+'
+                        if code.endswith('+++++'):
+                            code += ' ' + last_command
                         else:
-                            last_command = '+'
-                            if code.endswith('+++++'):
-                                code += ' ' + last_command
-                            else:
-                                code += last_command
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY:
-                            if lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
-                                cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
-                            if lmList[LEFT_WRIST][2] < lmList[NOSE][2]:
-                                cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
-                
+                            code += last_command
+                        same_command_count = 0
+
+                    if same_command_count > COMMAND_DELAY:
+                        if lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                            cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
+                        if lmList[LEFT_WRIST][2] < lmList[NOSE][2]:
+                            cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+            
                 # Duck, shoulders below threshold
                 elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
                     if last_command == '-':
@@ -244,7 +246,7 @@ def main():
                         if last_command != '[':
                             last_command = '['
                             code += last_command
-                        cv2.putText(frame, '[', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        cv2.putText(frame, '[', (280, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the right
                 elif lmList[LEFT_SHOULDER][1] > 440 and lmList[RIGHT_SHOULDER][1] > 440:
@@ -259,7 +261,7 @@ def main():
                         if last_command != ']':
                             last_command = ']'
                             code += last_command
-                        cv2.putText(frame, ']', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        cv2.putText(frame, ']', (280, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 else:
                     if last_command in ['<','>']:
                         code += last_command
