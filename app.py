@@ -182,7 +182,7 @@ def main():
                 if elbows_straight and left_arm_horizonal and right_arm_horizonal:
                     if last_command == '.':
                         same_command_count += 1
-                    else:
+                    elif last_command == 'default': # Avoid triggering double .
                         last_command = '.'
                         code += last_command
                         same_command_count = 0
@@ -278,8 +278,19 @@ def main():
                 else:
                     if last_command in ['<','>']:
                         code += last_command
-                    same_command_count = 0
-                    last_command = ''
+                    same_command_count = 0 
+
+                    if (last_command != 'default'):
+                        # Dummy command to identify default position with arms down
+                        shoulder_r = detector.find_angle(frame, LEFT_HIP, LEFT_SHOULDER, LEFT_ELBOW)
+                        shoulder_l = detector.find_angle(frame, RIGHT_HIP, RIGHT_SHOULDER, RIGHT_ELBOW)
+                        if shoulder_r < 60 and shoulder_l < 60:
+                            if lmList[LEFT_SHOULDER][1] < 440 and lmList[RIGHT_SHOULDER][1] < 440: # not too far right
+                                if lmList[LEFT_SHOULDER][1] > 200 and lmList[RIGHT_SHOULDER][1] > 200: # not too far left
+                                    last_command = 'default'
+                                    print('default')
+                        
+
                 #elif True: # Clap, and no second clap for 1 second
                 #    pass
                 #elif True: # Clap twice
@@ -316,3 +327,4 @@ if __name__ == "__main__":
 # implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
 # tilpass hvilke pose features som vises på video streamen
 # trykk tast/museknapp for å starte å ta imot kommandoer. 
+# rydd opp?
