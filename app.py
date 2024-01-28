@@ -1,9 +1,9 @@
-import cv2
-import mediapipe as mp
+from Interpreter import Visualnterpreter
 import math
+import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
 import numpy as np
-from Interpreter import Visualnterpreter
+import cv2
 
 class PoseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -175,10 +175,10 @@ def main():
                             char_count -= 1
                         if char_count > len(code_left_to_print):
                             char_count = len(code_left_to_print)
-                        lines_of_code.append(code_left_to_print[:char_count]) 
+                        lines_of_code.append(code_left_to_print[:char_count].strip()) 
                         code_left_to_print = code_left_to_print[char_count:]
                     else:
-                        lines_of_code.append(code_left_to_print)
+                        lines_of_code.append(code_left_to_print.strip())
                         code_left_to_print = ''
 
                 for i, line_of_code in enumerate(lines_of_code[-MAX_LINES_OF_CODE:]):
@@ -335,11 +335,14 @@ def main():
                                 cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                         else:
                             if clap_count == 1:
-                                print('Executing code...')
-                                print(code)
-                                interpreter.input_code(lines_of_code)
-                                code_output = ''
-                                execute_code = True
+                                if len(code) > 0:
+                                    print('Executing code...')
+                                    print(code)
+                                    interpreter.input_code(lines_of_code)
+                                    code_output = ''
+                                    execute_code = True
+                                else:
+                                    print('No code to execute')
                             clap_print1 = 0
                             clap_print2 = 0
                             clap_stage = ''
@@ -404,3 +407,6 @@ if __name__ == "__main__":
 
 # Visualiser interpreter tegn for tegn, med egen farge på aktuelt tegn.
 # Vis alle linjer (ikke bare 3-4) over hele skjermen, med grått delvis gjennomsiktig overlay
+    
+# Melding dersom man kjører interpreter uten kode?
+# Melding om at buffer tømmes ved dobbelt klapp?

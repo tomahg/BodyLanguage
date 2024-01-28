@@ -37,6 +37,10 @@ class Visualnterpreter:
         line = self.code_pointer_line
         output = ''
 
+        if len(self.code) == 0:
+            print('No code to execure')
+            return (-1, -1, '')
+
         command = self.code[self.code_pointer_line][self.code_pointer_char]
         # Handle formatted with single spaces, never double
         if command == ' ':
