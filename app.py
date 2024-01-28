@@ -3,6 +3,7 @@ import mediapipe as mp
 import math
 from mediapipe.python.solutions.pose import PoseLandmark
 import numpy as np
+from Interpreter import Visualnterpreter
 
 class poseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -116,6 +117,7 @@ def main():
     same_command_count = 0
     last_keypress = ''
     code = ''
+    lines_of_code = []
 
     clap_count = 0
     clap_stage = ''
@@ -126,7 +128,9 @@ def main():
 
     print_lock = 0
     pause = False
-
+    execute_code = False
+    code_output = ''
+    interpreter = Visualnterpreter()
 
     # Menu
     print('1: Toggle code view')
@@ -145,12 +149,18 @@ def main():
 
             h, w, c = frame.shape
             # w = 640
-
+            if execute_code:
+                c, l, o = interpreter.step()
+                print(c, l, o)
+                if o:
+                    code_output += o
+                if c == -1 and l == -1:
+                    execute_code = False
+  
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
                 cv2.line(frame, (440, 0), (440, h), (111,111,111), 2)
                 cv2.line(frame, (0, 440), (w, 440), (111,111,111), 2)
-
             if show_code_lines:
                 lines_of_code = []
                 code_left_to_print = code.strip()
@@ -327,6 +337,9 @@ def main():
                             if clap_count == 1:
                                 print('Executing code...')
                                 print(code)
+                                interpreter.input_code(lines_of_code)
+                                code_output = ''
+                                execute_code = True
                             clap_print1 = 0
                             clap_print2 = 0
                             clap_stage = ''
@@ -347,8 +360,8 @@ def main():
                         if clap_print2 == 0:
                             clap_display_for_frames = 10
                             clap_print2 = 1
-                        code = ''
-                        print('Clearing code')
+                            print('Clearing code')
+                        code = ''                        
                     elif clap_count == 1:
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
