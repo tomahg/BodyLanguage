@@ -5,7 +5,7 @@ from mediapipe.python.solutions.pose import PoseLandmark
 import numpy as np
 from Interpreter import Visualnterpreter
 
-class poseDetector() :    
+class PoseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
                  enable_segmentation=False, smooth_segmentation=True,
                  detectionCon=0.5, trackCon=0.5):
@@ -99,7 +99,7 @@ def DrawAlphaBox(img, x, y, h, w):
     img[y:y+h, x:x+w] = res
 
 def main():
-    detector = poseDetector()
+    detector = PoseDetector()
     cap = cv2.VideoCapture(0)
 
     FONT_SIZE = 10
@@ -402,5 +402,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
-# rydd opp?
+# Visualiser interpreter tegn for tegn, med egen farge på aktuelt tegn.
+# Vis alle linjer (ikke bare 3-4) over hele skjermen, med grått delvis gjennomsiktig overlay
