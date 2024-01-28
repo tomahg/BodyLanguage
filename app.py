@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import math
 from mediapipe.python.solutions.pose import PoseLandmark
+import numpy as np
 
 class poseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -41,7 +42,8 @@ class poseDetector() :
             PoseLandmark.MOUTH_RIGHT ]
 
         for landmark in excluded_landmarks:
-            self.results.pose_landmarks.landmark[landmark].visibility = 0
+            if self.results.pose_landmarks:
+                self.results.pose_landmarks.landmark[landmark].visibility = 0
 
         # Draw body landmarks
         # Default style = custom_style = mp.solutions.drawing_styles.get_default_pose_landmarks_style()
@@ -83,6 +85,17 @@ class poseDetector() :
 def get_text_width(text, font_face, font_scale, font_line_thickness):
     ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
     return txt_w
+
+def DrawAlphaBox(img, x, y, h, w):
+    # Crop the sub-rect from the image
+    # https://stackoverflow.com/questions/56472024/how-to-change-the-opacity-of-boxes-cv2-rectangle
+    sub_img = img[y:y+h, x:x+w]
+    white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255
+
+    res = cv2.addWeighted(sub_img, 0.5, white_rect, 0.5, 1.0)
+
+    # Put the image back to its position
+    img[y:y+h, x:x+w] = res
 
 def main():
     detector = poseDetector()
@@ -184,7 +197,9 @@ def main():
                         code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '.', (290, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        # Print . a litle higher than other commands
+                        cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
                 elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
@@ -206,6 +221,7 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
+                        DrawAlphaBox(frame, 145, 95, 110, 355)
                         cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
                         cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
@@ -224,9 +240,11 @@ def main():
                         same_command_count = 0
 
                     if same_command_count > COMMAND_DELAY:
-                        if landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2]: 
+                        if landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
+                            DrawAlphaBox(frame, 145, 95, 110, 120)
                             cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
-                        if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2]:
+                        if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm:
+                            DrawAlphaBox(frame, 385, 95, 110, 120)
                             cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
             
                 # Duck, shoulders below threshold
@@ -241,7 +259,8 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        cv2.putText(frame, '-', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        cv2.putText(frame, '-', (280-20, 200-5), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the left
                 elif landmarks[PoseLandmark.LEFT_SHOULDER][1] < 200 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 200:
@@ -251,12 +270,15 @@ def main():
                         last_command = '<'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        cv2.putText(frame, '<', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        cv2.putText(frame, '<', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                     if same_command_count > 30:
                         if last_command != '[':
                             last_command = '['
                             code += last_command
-                        cv2.putText(frame, '[', (280, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        # [ is strangely large, print it a little smaller, and further up, than other commands
+                        cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the right
                 elif landmarks[PoseLandmark.LEFT_SHOULDER][1] > 440 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 440:
@@ -266,12 +288,15 @@ def main():
                         last_command = '>'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        cv2.putText(frame, '>', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        cv2.putText(frame, '>', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                     if same_command_count > 30:
                         if last_command != ']':
                             last_command = ']'
                             code += last_command
-                        cv2.putText(frame, ']', (280, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
+                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        # ] is strangely large, print it a little smaller, and further up, than other commands
+                        cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -283,7 +308,7 @@ def main():
                     shoulder_r = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
                     shoulder_l = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                     if shoulder_r < 60 and shoulder_l < 60: # arms facing downwards
-                        # Remember that right and left are mirrored
+                        # Remember that right and left are mirrored, because the image is flipped
                         if landmarks[PoseLandmark.LEFT_SHOULDER][1] < 500 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 500: # not too far right
                             if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
                                 last_command = 'default'
@@ -293,9 +318,11 @@ def main():
                         if clap_display_for_frames > 0:
                             clap_display_for_frames -= 1
                             if clap_count >= 2:
-                                cv2.putText(frame, 'Clap! Clap!', (120, 200), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
+                                DrawAlphaBox(frame, 120, 95, 110, 400)
+                                cv2.putText(frame, 'Clap! Clap!', (150, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                             elif clap_count == 1:
-                                cv2.putText(frame, 'Clap!', (230, 200), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
+                                DrawAlphaBox(frame, 200-10, 95, 110, 220)
+                                cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                         else:
                             if clap_count == 1:
                                 print('Executing code...')
@@ -362,7 +389,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# fiks visning av enkelttegn, midt på? Alpha? Rounded corners?
 # implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
-# trykk tast/museknapp for å starte å ta imot kommandoer. 
 # rydd opp?
