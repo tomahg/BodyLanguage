@@ -21,38 +21,49 @@ class poseDetector() :
         self.pose = self.mpPose.Pose(self.mode, self.complexity, self.smooth_landmarks,
                                      self.enable_segmentation, self.smooth_segmentation,
                                      self.detectionCon, self.trackCon)
-        
-        
-    def findPose (self, img, draw=True):
+
+    def process (self, img):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        self.results = self.pose.process(imgRGB)
-        
+        self.results = self.pose.process(imgRGB)        
+
+        # Hide face landmarks
+        excluded_landmarks = [
+            PoseLandmark.LEFT_EYE, 
+            PoseLandmark.RIGHT_EYE, 
+            PoseLandmark.LEFT_EYE_INNER, 
+            PoseLandmark.RIGHT_EYE_INNER, 
+            PoseLandmark.LEFT_EAR,
+            PoseLandmark.RIGHT_EAR,
+            PoseLandmark.LEFT_EYE_OUTER,
+            PoseLandmark.RIGHT_EYE_OUTER,
+            PoseLandmark.NOSE,
+            PoseLandmark.MOUTH_LEFT,
+            PoseLandmark.MOUTH_RIGHT ]
+
+        for landmark in excluded_landmarks:
+            self.results.pose_landmarks.landmark[landmark].visibility = 0
+
+        # Draw body landmarks
+        # Default style = custom_style = mp.solutions.drawing_styles.get_default_pose_landmarks_style()
         if self.results.pose_landmarks:
-            if draw:
-                self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
-                
+            self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
         return img
     
-    def findPosition(self, img, draw=True):
-        self.lmList = []
+    def find_pixel_positions(self, img):
+        self.landmark_list = []
         if self.results.pose_landmarks:
             for id, lm in enumerate(self.results.pose_landmarks.landmark):
-                #finding height, width of the image printed
+                # Determining the pixel position of the landmarks
                 h, w, c = img.shape
-                #Determining the pixels of the landmarks
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                self.lmList.append([id, cx, cy])
-                if draw:
-                    cv2.circle(img, (cx, cy), 5, (255,0,0), cv2.FILLED)
-        return self.lmList
+                self.landmark_list.append([id, cx, cy])
+        return self.landmark_list
         
-    def find_angle(self, img, p1, p2, p3, draw=True):   
-        #Get the landmarks
-        x1, y1 = self.lmList[p1][1:]
-        x2, y2 = self.lmList[p2][1:]
-        x3, y3 = self.lmList[p3][1:]
+    def find_angle(self, p1, p2, p3):   
+        x1, y1 = self.landmark_list[p1][1:]
+        x2, y2 = self.landmark_list[p2][1:]
+        x3, y3 = self.landmark_list[p3][1:]
         
-        #Calculate Angle
         angle = math.degrees(math.atan2(y3-y2, x3-x2) - math.atan2(y1-y2, x1-x2))
         if angle < 0:
             angle += 360
@@ -61,28 +72,14 @@ class poseDetector() :
         elif angle > 180:
             angle = 360 - angle
         
-        #Draw
-        if draw:
-            cv2.line(img, (x1, y1), (x2, y2), (255,255,255), 3)
-            cv2.line(img, (x3, y3), (x2, y2), (255,255,255), 3)
-            
-            cv2.circle(img, (x1, y1), 5, (0,0,255), cv2.FILLED)
-            #cv2.circle(img, (x1, y1), 15, (0,0,255), 2)
-            cv2.circle(img, (x2, y2), 5, (0,0,255), cv2.FILLED)
-            cv2.circle(img, (x2, y2), 15, (0,0,255), 2)
-            cv2.circle(img, (x3, y3), 5, (0,0,255), cv2.FILLED)
-            #cv2.circle(img, (x3, y3), 15, (0,0,255), 2)
-            
-            #cv2.putText(img, str(int(angle)), (x2-50, y2+50), cv2.FONT_HERSHEY_PLAIN, 2, (0,0,255), 2)
         return angle
     
     def find_length(self, p1, p2):
-        #Get the landmarks
-        x1, y1 = self.lmList[p1][1:]
-        x2, y2 = self.lmList[p2][1:]
+        x1, y1 = self.landmark_list[p1][1:]
+        x2, y2 = self.landmark_list[p2][1:]
         distance = math.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-        return distance
-    
+        return distance  
+
 def get_text_width(text, font_face, font_scale, font_line_thickness):
     ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
     return txt_w
@@ -90,19 +87,6 @@ def get_text_width(text, font_face, font_scale, font_line_thickness):
 def main():
     detector = poseDetector()
     cap = cv2.VideoCapture(0)
-
-    # Pose landmarks
-    NOSE = PoseLandmark.NOSE
-    LEFT_SHOULDER = PoseLandmark.LEFT_SHOULDER
-    RIGHT_SHOULDER = PoseLandmark.RIGHT_SHOULDER
-    LEFT_ELBOW = PoseLandmark.LEFT_ELBOW
-    RIGHT_ELBOW = PoseLandmark.RIGHT_ELBOW
-    LEFT_WRIST = PoseLandmark.LEFT_WRIST
-    RIGHT_WRIST = PoseLandmark.RIGHT_WRIST
-    LEFT_INDEX = PoseLandmark.LEFT_INDEX
-    RIGHT_INDEX = PoseLandmark.RIGHT_INDEX
-    LEFT_HIP = PoseLandmark.LEFT_HIP
-    RIGHT_HIP = PoseLandmark.RIGHT_HIP
 
     FONT_SIZE = 10
     FONT_WEIGHT = 10
@@ -128,6 +112,7 @@ def main():
     clap_print2 = 0
 
     print_lock = 0
+    pause = False
 
 
     # Menu
@@ -135,13 +120,15 @@ def main():
     print('2: Toggle grid')
     print('3: Backspace')
     print('4: Clear code')
+    print('5. Pause')
 
     while cap.isOpened():
         ready, flipped_frame = cap.read()
 
         if ready:    
             frame = cv2.flip(flipped_frame, 1)
-            annotated_frame = detector.findPose(frame, True)
+            annotated_frame = detector.process(frame)
+            landmarks = detector.find_pixel_positions(frame)
 
             h, w, c = frame.shape
             # w = 640
@@ -175,20 +162,19 @@ def main():
                     cv2.rectangle(frame, (0, i * 36), (w, 36 + i * 36), (0,0,0), -1)
                     cv2.putText(frame, line_of_code.strip(), (int(HORIZONTAL_MARGIN / 2), i * 36 + 28), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
 
-            lmList = detector.findPosition(frame, False)
-            if len(lmList):
-                elbow_r = detector.find_angle(frame, LEFT_SHOULDER, LEFT_ELBOW, LEFT_WRIST)
-                elbow_l = detector.find_angle(frame, RIGHT_SHOULDER, RIGHT_ELBOW, RIGHT_WRIST)
-                upper_arm_l = detector.find_length(RIGHT_SHOULDER, RIGHT_ELBOW)
-                upper_arm_r = detector.find_length(RIGHT_SHOULDER, RIGHT_ELBOW)
+            if len(landmarks) and not pause:
+                elbow_r = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
+                elbow_l = detector.find_angle(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
+                upper_arm_l = detector.find_length(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
+                upper_arm_r = detector.find_length(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                 half_upper_arm = int((upper_arm_l + upper_arm_r) / 4)
                 upper_arm = int((upper_arm_l + upper_arm_r) / 2)
 
                 # Elbows straight
                 elbows_straight = elbow_l > 130 and elbow_r > 130
                 # Arms horizontal, less then half an upper arm off
-                left_arm_horizonal = abs(lmList[LEFT_SHOULDER][2] - lmList[LEFT_WRIST][2]) < half_upper_arm
-                right_arm_horizonal = abs(lmList[RIGHT_SHOULDER][2] - lmList[RIGHT_WRIST][2]) < half_upper_arm
+                left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
+                right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
                 if elbows_straight and left_arm_horizonal and right_arm_horizonal:
                     if last_command == '.':
                         same_command_count += 1
@@ -201,7 +187,7 @@ def main():
                         cv2.putText(frame, '.', (290, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
-                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] - upper_arm and lmList[RIGHT_WRIST][2] < lmList[NOSE][2] - upper_arm: 
+                elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
                     if last_command == '++':
                         same_command_count += 1
                     elif last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
@@ -224,7 +210,7 @@ def main():
                         cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
                 # Hands up!
-                elif lmList[LEFT_WRIST][2] < lmList[NOSE][2] - upper_arm or lmList[RIGHT_WRIST][2] < lmList[NOSE][2] - upper_arm : 
+                elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm or landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm : 
                     if last_command == '+':
                         same_command_count += 1
                     elif last_command == '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time 
@@ -238,13 +224,13 @@ def main():
                         same_command_count = 0
 
                     if same_command_count > COMMAND_DELAY:
-                        if lmList[RIGHT_WRIST][2] < lmList[NOSE][2]: 
+                        if landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2]: 
                             cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
-                        if lmList[LEFT_WRIST][2] < lmList[NOSE][2]:
+                        if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2]:
                             cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
             
                 # Duck, shoulders below threshold
-                elif lmList[LEFT_SHOULDER][2] > 450 and lmList[RIGHT_SHOULDER][2] > 450: 
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][2] > 450 and landmarks[PoseLandmark.RIGHT_SHOULDER][2] > 450: 
                     if last_command == '-':
                         same_command_count += 1
                     else:
@@ -258,7 +244,7 @@ def main():
                         cv2.putText(frame, '-', (260, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the left
-                elif lmList[LEFT_SHOULDER][1] < 200 and lmList[RIGHT_SHOULDER][1] < 200:
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] < 200 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 200:
                     if last_command == '<' or last_command == '[':
                         same_command_count += 1
                     else:
@@ -273,7 +259,7 @@ def main():
                         cv2.putText(frame, '[', (280, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the right
-                elif lmList[LEFT_SHOULDER][1] > 440 and lmList[RIGHT_SHOULDER][1] > 440:
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] > 440 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 440:
                     if last_command == '>' or last_command == ']':
                         same_command_count += 1
                     else:
@@ -294,12 +280,12 @@ def main():
 
                     # Dummy command to identify default position with arms down
                     # Clapping should be performed in this position. buy with wrists higher then elbows
-                    shoulder_r = detector.find_angle(frame, LEFT_HIP, LEFT_SHOULDER, LEFT_ELBOW)
-                    shoulder_l = detector.find_angle(frame, RIGHT_HIP, RIGHT_SHOULDER, RIGHT_ELBOW)
+                    shoulder_r = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
+                    shoulder_l = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                     if shoulder_r < 60 and shoulder_l < 60: # arms facing downwards
                         # Remember that right and left are mirrored
-                        if lmList[LEFT_SHOULDER][1] < 500 and lmList[RIGHT_SHOULDER][1] < 500: # not too far right
-                            if lmList[LEFT_SHOULDER][1] > 140 and lmList[RIGHT_SHOULDER][1] > 140: # not too far left
+                        if landmarks[PoseLandmark.LEFT_SHOULDER][1] < 500 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 500: # not too far right
+                            if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
                                 last_command = 'default'
                                 print_lock = 0 # Must return to default between each print command
                                 
@@ -313,20 +299,20 @@ def main():
                         else:
                             if clap_count == 1:
                                 print('Executing code...')
+                                print(code)
                             clap_print1 = 0
                             clap_print2 = 0
                             clap_stage = ''
                             clap_count = 0
 
                     if last_command == 'default' or last_command == '':
-                        if lmList[LEFT_INDEX][1] > lmList[LEFT_SHOULDER][1] and lmList[RIGHT_INDEX][1] < lmList[RIGHT_SHOULDER][1]:
-                            if lmList[LEFT_WRIST][2] < lmList[LEFT_ELBOW][2] and lmList[RIGHT_WRIST][2] < lmList[RIGHT_ELBOW][2]:
-                                if lmList[LEFT_SHOULDER][2] < lmList[LEFT_ELBOW][2] and lmList[RIGHT_SHOULDER][2] < lmList[RIGHT_ELBOW][2]:
+                        if landmarks[PoseLandmark.LEFT_INDEX][1] > landmarks[PoseLandmark.LEFT_SHOULDER][1] and landmarks[PoseLandmark.RIGHT_INDEX][1] < landmarks[PoseLandmark.RIGHT_SHOULDER][1]:
+                            if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
+                                if landmarks[PoseLandmark.LEFT_SHOULDER][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_SHOULDER][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     clap_stage = 'wide' 
                                     clap_closing_timeframe = 5    
-                        print(clap_stage)
-                        if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(lmList[LEFT_INDEX][1] - lmList[RIGHT_INDEX][1]) < int(half_upper_arm):
-                            if lmList[LEFT_WRIST][2] < lmList[LEFT_ELBOW][2] and lmList[RIGHT_WRIST][2] < lmList[RIGHT_ELBOW][2]:
+                        if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
+                            if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
                                 clap_count += 1
                                 print('clap', clap_count)
@@ -360,6 +346,13 @@ def main():
         elif cv2.waitKey(1) == ord('4') and last_keypress != '4': #Clear code
             last_keypress = '4'
             code = ''
+        elif cv2.waitKey(1) == ord('5') and last_keypress != '5': #Pause
+            last_keypress = '5'
+            pause = not pause
+            if pause:
+                print('Paused')
+            else:
+                print('Resumed')
         else:
             last_keypress = '0'
 
@@ -369,9 +362,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Forbedre klapp-deteksjon
 # fiks visning av enkelttegn, midt på? Alpha? Rounded corners?
 # implementer brainfuck-interpreter, og vis resultatet. gjerne tegn for tegn, men highlighting
-# tilpass hvilke pose features som vises på video streamen
 # trykk tast/museknapp for å starte å ta imot kommandoer. 
 # rydd opp?
