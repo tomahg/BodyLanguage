@@ -151,11 +151,11 @@ def main():
             # w = 640
             if execute_code:
                 c, l, o = interpreter.step()
-                print(c, l, o)
                 if o:
                     code_output += o
                 if c == -1 and l == -1:
                     execute_code = False
+                    print(code_output)
   
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
