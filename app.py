@@ -369,8 +369,15 @@ def main():
                         if clap_print2 == 0:
                             clap_display_for_frames = 10
                             clap_print2 = 1
+                        # If interpreter is running: stop it
+                        # Otherwise clear code buffer
+                        if execute_code:
+                            print('Stopping interpreter')
+                            execute_code = False
+                            finished_debug_and_print = False
+                        else:
                             print('Clearing code')
-                        code = ''                        
+                            code = ''                        
                     elif clap_count == 1:
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
@@ -411,12 +418,14 @@ def main():
 if __name__ == "__main__":
     main()
 
+# Test å legge til mer kode mens interpreter kjører?
+# Test å skrive ut NDC
+# Test å skrive ut Novacare
 
 # Melding dersom man kjører interpreter uten kode?
 # Melding om at buffer tømmes ved dobbelt klapp?
     
-# Stopp kodeinput når interpreter kjører? Ja
-# Stopp interpreter med dobbelt-klapp? Ja  
+# Stopp kodeinput når interpreter kjører? Ja?
 # Kjør på nytt med enkelt-klapp
 # Vis output + cells ved interpreting 
 # Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
