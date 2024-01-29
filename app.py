@@ -109,6 +109,7 @@ def main():
     HORIZONTAL_MARGIN = 10
 
     COMMAND_DELAY = 0
+    COMMAND_DELAY_DELETE = 2
 
     show_code_lines = True
     show_grid_lines = False
@@ -192,15 +193,18 @@ def main():
                     interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
             if len(landmarks) and not pause:
-                elbow_r = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
-                elbow_l = detector.find_angle(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
+                arm_l = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
+                arm_r = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
+                elbow_l = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
+                elbow_r = detector.find_angle(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
                 upper_arm_l = detector.find_length(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
                 upper_arm_r = detector.find_length(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                 half_upper_arm = int((upper_arm_l + upper_arm_r) / 4)
                 upper_arm = int((upper_arm_l + upper_arm_r) / 2)
 
-                # Elbows straight
+                # Elbow positions
                 elbows_straight = elbow_l > 130 and elbow_r > 130
+                elbows_tucked = arm_l < 25 and arm_r < 25
                 # Arms horizontal, less then half an upper arm off
                 left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                 right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
@@ -313,6 +317,36 @@ def main():
                         draw_white_apha_box(frame, 260, 95, 110, 120)
                         # ] is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
+
+                # Arms crossed, elbows tucked, and lowered head, regretting                 
+                elif elbows_tucked and \
+                    (landmarks[PoseLandmark.LEFT_SHOULDER][2] + landmarks[PoseLandmark.RIGHT_SHOULDER][2]) / 2 < landmarks[PoseLandmark.NOSE][2] + (half_upper_arm / 2) and\
+                    landmarks[PoseLandmark.LEFT_WRIST][1] < landmarks[PoseLandmark.RIGHT_WRIST][1]:
+                    if last_command == '⌫':
+                        same_command_count += 1
+                    else:
+                        last_command = '⌫'
+                        same_command_count = 0
+                        code = code[:-1]
+                    if same_command_count > COMMAND_DELAY_DELETE:
+                        draw_white_apha_box(frame, 260-20, 95, 110, 120+40)
+                        # Try to draw something like this: ⌫
+                        #      p2 ---- p4
+                        #  p1           |
+                        #      p3 ---- p5
+                        p1 = (250, 150)
+                        p2 = (300, 115)
+                        p3 = (300, 185)
+                        p4 = (390, 115)
+                        p5 = (390, 185)
+                        cv2.line(frame, p1, p2, (0,0,255), 3)
+                        cv2.line(frame, p2, p4, (0,0,255), 3)
+                        cv2.line(frame, p1, p3, (0,0,255), 3)
+                        cv2.line(frame, p3, p5, (0,0,255), 3)
+                        cv2.line(frame, p4, p5, (0,0,255), 3)
+                        cv2.line(frame, p2, p5, (0,0,255), 3)
+                        cv2.line(frame, p3, p4, (0,0,255), 3)
+
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -438,12 +472,10 @@ if __name__ == "__main__":
 # Test å skrive ut Novacare
 
 # Melding dersom man kjører interpreter uten kode?
-# Melding om at buffer tømmes ved dobbelt klapp?
     
-# Start/stopp interpreter med enkelt-klapp
 # Vis output + cells med pointer ved interpreting 
 # Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
     
 # Armene i kors, og senket hode, for å slette siste tegn
     
-# Vurder å kjøre koden raskere inne i en loop
+# Kjør raskere inni loop men også første gang
