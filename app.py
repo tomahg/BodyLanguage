@@ -130,6 +130,7 @@ def main():
     pause = False
     execute_code = False
     code_output = ''
+    finished_debug_and_print = False
     interpreter = Visualnterpreter()
 
     # Menu
@@ -153,8 +154,8 @@ def main():
                 finished, c, l, o = interpreter.step()
                 if o:
                     code_output += o
-                if finished:
-                    #execute_code = False
+                if finished and not finished_debug_and_print:
+                    finished_debug_and_print = True
                     print(code_output)
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
                 if not finished:
@@ -345,6 +346,7 @@ def main():
                                     interpreter.prepare_code()
                                     code_output = ''
                                     execute_code = True
+                                    finished_debug_and_print = False
                                 else:
                                     print('No code to execute')
                             clap_print1 = 0
@@ -415,9 +417,11 @@ if __name__ == "__main__":
     
 # Stopp kodeinput når interpreter kjører? Ja
 # Stopp interpreter med dobbelt-klapp? Ja  
-# Kjøe på nytt med enkelt-klapp
+# Kjør på nytt med enkelt-klapp
 # Vis output + cells ved interpreting 
-# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!
+# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
+# Håndter at resultat bare skrives èn gang når koden kjøres
+    
 # Armene i kors for å slette siste tegn
     
-# Håndter at resultat bare skrives èn gang når koden kjøres
+# Vurder å kjøre koden raskere inne i en loop

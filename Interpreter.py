@@ -15,6 +15,8 @@ class Visualnterpreter:
     code_pointer_char = 0
     code_pointer_line = 0
     finished = False
+    debug_slowdown_count = 0
+    debug_slowdown_factor = 2
 
     def build_jumpmap(self):
         temp_jumpstack, jumpmap = [], {}
@@ -37,6 +39,7 @@ class Visualnterpreter:
         self.cell_pointer = 0
         self.code_pointer_char = 0
         self.code_pointer_line = 0
+        self.debug_slowdown_count = 0
         self.finished = False
 
     def step(self):
@@ -44,9 +47,17 @@ class Visualnterpreter:
         line = self.code_pointer_line
         output = ''
 
+        if self.debug_slowdown_count % self.debug_slowdown_factor != 0:
+            self.debug_slowdown_count += 1
+            return False, char, line, '' 
+        else:
+            self.debug_slowdown_count = 1
+
         # No code, or point past last line
-        if len(self.code) == 0 or len(self.code) == self.code_pointer_line:
+        if len(self.code) == 0:
             print('No code to execure')
+            return True, char, line, ''
+        elif len(self.code) == self.code_pointer_line:
             return True, char, line, ''
 
         command = self.code[self.code_pointer_line][self.code_pointer_char]
@@ -127,6 +138,8 @@ class Visualnterpreter:
             self.debug_single_line_of_code(img, i, line_of_code, margin_h, 100)
 
     def highlight_debug_cmmand(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
+        if line_number == len(self.code):
+            return
         line_height = 36
         line_margin_v = 8
         previous_code = self.code[line_number][:char_number]
