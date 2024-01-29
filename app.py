@@ -162,7 +162,8 @@ def main():
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
                         print(code_output)
-                interpreter.print_cells(frame)                
+                interpreter.print_cells(frame) 
+                interpreter.print_outout(frame, code_output)              
                 if not finished and not interpreter_paused:
                     interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
   
