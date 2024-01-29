@@ -150,12 +150,15 @@ def main():
             h, w, c = frame.shape
             # w = 640
             if execute_code:
-                c, l, o = interpreter.step()
+                finished, c, l, o = interpreter.step()
                 if o:
                     code_output += o
-                if c == -1 and l == -1:
-                    execute_code = False
+                if finished:
+                    #execute_code = False
                     print(code_output)
+                interpreter.DebugLinesOfCode(frame, (int(HORIZONTAL_MARGIN / 2)))
+                if not finished:
+                    interpreter.HighlightDebugCommand(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
   
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
@@ -182,7 +185,8 @@ def main():
                         code_left_to_print = ''
 
                 interpreter.input_code(lines_of_code)
-                interpreter.PrintLinesOfCode(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
+                if not execute_code:
+                    interpreter.PrintLinesOfCode(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
             if len(landmarks) and not pause:
                 elbow_r = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
@@ -338,7 +342,7 @@ def main():
                                     print('Executing code...')
                                     print(code)
                                     interpreter.input_code(lines_of_code)
-                                    interpreter.prepare()
+                                    interpreter.prepare_code()
                                     code_output = ''
                                     execute_code = True
                                 else:
@@ -405,8 +409,15 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Visualiser interpreter tegn for tegn, med egen farge på aktuelt tegn.
-# Vis alle linjer (ikke bare 3-4) over hele skjermen, med grått delvis gjennomsiktig overlay
-    
+
 # Melding dersom man kjører interpreter uten kode?
 # Melding om at buffer tømmes ved dobbelt klapp?
+    
+# Stopp kodeinput når interpreter kjører? Ja
+# Stopp interpreter med dobbelt-klapp? Ja  
+# Kjøe på nytt med enkelt-klapp
+# Vis output + cells ved interpreting 
+# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!
+# Armene i kors for å slette siste tegn
+    
+# Håndter at resultat bare skrives èn gang når koden kjøres
