@@ -474,6 +474,5 @@ if __name__ == "__main__":
 
 # Test å skrive ut Novacare
 # Melding dersom man kjører interpreter uten kode?
-# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
-# Vis output på skjerm
-# Vurder markering av siste oppdaterte celle + siste tegn av output
+# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!
+# Readme

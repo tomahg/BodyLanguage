@@ -2,13 +2,13 @@
 # Does not implement input (,)
 # The input code split over multiple lines with space
 # Each call to step returns the char index + line index of a non-space command + any output
-# When the end of the program is reaced (-1, -1, '') is returned
+# When the end of the program is reaced (False, c, l, '') is returned
 
 import cv2
 import numpy as np
 
 class Visualnterpreter:
-    INTERPRETER_OFFSET_Y = 20
+    INTERPRETER_OFFSET_Y = 0
 
     code = []
     jumpmap = {}
@@ -143,6 +143,8 @@ class Visualnterpreter:
         cv2.putText(img, line_of_code.strip(), (margin_h, line_number * line_height + margin_v + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
     def debug_lines_of_code(self, img, margin_h):
+        if len(self.code) == 0:
+            return
         lines = len(self.code)
         self.draw_black_alpha_box(img, 0, self.INTERPRETER_OFFSET_Y, 40 * lines, img.shape[1])
         for i, line_of_code in enumerate(self.code):
@@ -178,17 +180,19 @@ class Visualnterpreter:
         
         # Draw cell values
         for i, cell in enumerate(self.cells[:8]):
-            offset = self.get_text_width(str(cell), cv2.FONT_HERSHEY_PLAIN, 2, 2) - 4
+            offset = self.get_text_width(str(cell), cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
             cv2.putText(img, str(cell), ((i + 1) * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2)
             
         # Draw pointer to current cell
         xp = 40 + 79 * self.cell_pointer
         yp = 422
+        cv2.line(img, (xp, yp), (xp - 20, yp - 15), (255,255,255), 5)
+        cv2.line(img, (xp, yp), (xp + 20, yp - 15), (255,255,255), 5)        
         cv2.line(img, (xp, yp), (xp - 20, yp - 15), (0,0,255), 3)
         cv2.line(img, (xp, yp), (xp + 20, yp - 15), (0,0,255), 3)
 
     def print_outout(self, img, output):
         if len(output) > 0:
-            width = self.get_text_width(output, cv2.FONT_HERSHEY_PLAIN, 8, 2) - 4
-            self.draw_black_alpha_box(img, 0, 360, 60, img.shape[1])
-            cv2.putText(img, output, ((img.shape[1] - width) / 2, 380), cv2.FONT_HERSHEY_PLAIN, 8, (255,255,255), 2)
+            width = self.get_text_width(output, cv2.FONT_HERSHEY_PLAIN, 5, 3) - 4
+            self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])
+            cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380), cv2.FONT_HERSHEY_PLAIN, 5, (255,255,255), 3)
