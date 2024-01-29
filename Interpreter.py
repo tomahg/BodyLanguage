@@ -95,38 +95,38 @@ class Visualnterpreter:
 
         return False, char, line, output
 
-    def PrintSingleLineOfCode(self, img, line_number, line_of_code, margin_h, color = (255,255,255)):
+    def print_single_line_of_code(self, img, line_number, line_of_code, margin_h, color = (255,255,255)):
         line_height = 36
         line_margin_v = 8
         cv2.rectangle(img, (0, line_number * line_height), (img.shape[1], line_height + line_number * line_height), (0,0,0), -1)
         cv2.putText(img, line_of_code.strip(), (margin_h, line_number * line_height + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
-    def PrintLinesOfCode(self, img, n, margin_h):
+    def print_lines_of_code(self, img, n, margin_h):
         for i, line_of_code in enumerate(self.code[-n:]):
-            self.PrintSingleLineOfCode(img, i, line_of_code, margin_h)
+            self.print_single_line_of_code(img, i, line_of_code, margin_h)
 
     def get_text_width(self, text, font_face, font_scale, font_line_thickness):
         ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
         return txt_w
 
-    def DrawAlphaBox(self, img, x, y, h, w):
+    def draw_black_alpha_box(self, img, x, y, h, w):
         sub_img = img[y:y+h, x:x+w]
         black_rect = np.ones(sub_img.shape, dtype=np.uint8) * 0
         res = cv2.addWeighted(sub_img, 0.3, black_rect, 0.7, 1.0)
         img[y:y+h, x:x+w] = res
 
-    def DebugSingleLineOfCode(self, img, line_number, line_of_code, margin_h, margin_v, color = (255,255,255)):
+    def debug_single_line_of_code(self, img, line_number, line_of_code, margin_h, margin_v, color = (255,255,255)):
         line_height = 36
         line_margin_v = 8
         cv2.putText(img, line_of_code.strip(), (margin_h, line_number * line_height + margin_v + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
-    def DebugLinesOfCode(self, img, margin_h):
+    def debug_lines_of_code(self, img, margin_h):
         lines = len(self.code)
-        self.DrawAlphaBox(img, 0, 100, 40 * lines, img.shape[1])
+        self.draw_black_alpha_box(img, 0, 100, 40 * lines, img.shape[1])
         for i, line_of_code in enumerate(self.code):
-            self.DebugSingleLineOfCode(img, i, line_of_code, margin_h, 100)
+            self.debug_single_line_of_code(img, i, line_of_code, margin_h, 100)
 
-    def HighlightDebugCommand(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
+    def highlight_debug_cmmand(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
         line_height = 36
         line_margin_v = 8
         previous_code = self.code[line_number][:char_number]

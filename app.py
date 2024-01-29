@@ -156,9 +156,9 @@ def main():
                 if finished:
                     #execute_code = False
                     print(code_output)
-                interpreter.DebugLinesOfCode(frame, (int(HORIZONTAL_MARGIN / 2)))
+                interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
                 if not finished:
-                    interpreter.HighlightDebugCommand(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
+                    interpreter.highlight_debug_cmmand(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
   
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
@@ -186,7 +186,7 @@ def main():
 
                 interpreter.input_code(lines_of_code)
                 if not execute_code:
-                    interpreter.PrintLinesOfCode(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
+                    interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
             if len(landmarks) and not pause:
                 elbow_r = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
