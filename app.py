@@ -87,7 +87,7 @@ def get_text_width(text, font_face, font_scale, font_line_thickness):
     ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
     return txt_w
 
-def DrawAlphaBox(img, x, y, h, w):
+def draw_white_apha_box(img, x, y, h, w):
     # Crop the sub-rect from the image
     # https://stackoverflow.com/questions/56472024/how-to-change-the-opacity-of-boxes-cv2-rectangle
     sub_img = img[y:y+h, x:x+w]
@@ -130,7 +130,8 @@ def main():
     pause = False
     execute_code = False
     code_output = ''
-    finished_debug_and_print = False
+    interpreter_finished_debug_and_print = False
+    interpreter_paused = False
     interpreter = Visualnterpreter()
 
     # Menu
@@ -151,14 +152,15 @@ def main():
             h, w, c = frame.shape
             # w = 640
             if execute_code:
-                finished, c, l, o = interpreter.step()
-                if o:
-                    code_output += o
-                if finished and not finished_debug_and_print:
-                    finished_debug_and_print = True
-                    print(code_output)
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not finished:
+                if not interpreter_paused and not interpreter_finished_debug_and_print:
+                    finished, c, l, o = interpreter.step()
+                    if o:
+                        code_output += o
+                    if finished and not interpreter_finished_debug_and_print:
+                        interpreter_finished_debug_and_print = True
+                        print(code_output)                    
+                if not finished and not interpreter_paused:
                     interpreter.highlight_debug_cmmand(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
   
             if show_grid_lines: 
@@ -211,7 +213,7 @@ def main():
                         code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         # Print . a litle higher than other commands
                         cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
@@ -235,7 +237,7 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        DrawAlphaBox(frame, 145, 95, 110, 355)
+                        draw_white_apha_box(frame, 145, 95, 110, 355)
                         cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
                         cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
@@ -255,10 +257,10 @@ def main():
 
                     if same_command_count > COMMAND_DELAY:
                         if landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
-                            DrawAlphaBox(frame, 145, 95, 110, 120)
+                            draw_white_apha_box(frame, 145, 95, 110, 120)
                             cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
                         if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm:
-                            DrawAlphaBox(frame, 385, 95, 110, 120)
+                            draw_white_apha_box(frame, 385, 95, 110, 120)
                             cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
             
                 # Duck, shoulders below threshold
@@ -273,7 +275,7 @@ def main():
                             code += last_command
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY:
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         cv2.putText(frame, '-', (280-20, 200-5), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the left
@@ -284,13 +286,13 @@ def main():
                         last_command = '<'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         cv2.putText(frame, '<', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                     if same_command_count > 30:
                         if last_command != '[':
                             last_command = '['
                             code += last_command
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         # [ is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
                 
@@ -302,13 +304,13 @@ def main():
                         last_command = '>'
                         same_command_count = 0
                     if same_command_count > COMMAND_DELAY and same_command_count < 30:
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         cv2.putText(frame, '>', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                     if same_command_count > 30:
                         if last_command != ']':
                             last_command = ']'
                             code += last_command
-                        DrawAlphaBox(frame, 260, 95, 110, 120)
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
                         # ] is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
                 else:
@@ -332,23 +334,38 @@ def main():
                         if clap_display_for_frames > 0:
                             clap_display_for_frames -= 1
                             if clap_count >= 2:
-                                DrawAlphaBox(frame, 120, 95, 110, 400)
+                                draw_white_apha_box(frame, 120, 95, 110, 400)
                                 cv2.putText(frame, 'Clap! Clap!', (150, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                             elif clap_count == 1:
-                                DrawAlphaBox(frame, 200-10, 95, 110, 220)
+                                draw_white_apha_box(frame, 200-10, 95, 110, 220)
                                 cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                         else:
                             if clap_count == 1:
-                                if len(code) > 0:
-                                    print('Executing code...')
-                                    print(code)
-                                    interpreter.input_code(lines_of_code)
-                                    interpreter.prepare_code()
-                                    code_output = ''
-                                    execute_code = True
-                                    finished_debug_and_print = False
+                                if execute_code:
+                                    if interpreter_finished_debug_and_print or interpreter_paused:
+                                        print('Restarting interpreter...')
+                                        print(code)
+                                        interpreter.input_code(lines_of_code)
+                                        interpreter.prepare_code()
+                                        code_output = ''
+                                        execute_code = True
+                                        interpreter_finished_debug_and_print = False
+                                        interpreter_paused = False
+                                    else:
+                                        print('Stopping interpreter...') 
+                                        interpreter_paused = True
                                 else:
-                                    print('No code to execute')
+                                    if len(code) > 0:
+                                        print('Starting interpreter...')
+                                        print(code)
+                                        interpreter.input_code(lines_of_code)
+                                        interpreter.prepare_code()
+                                        code_output = ''
+                                        execute_code = True
+                                        interpreter_finished_debug_and_print = False
+                                        interpreter_paused = False
+                                    else:
+                                        print('No code to execute!')
                             clap_print1 = 0
                             clap_print2 = 0
                             clap_stage = ''
@@ -418,19 +435,15 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Test å legge til mer kode mens interpreter kjører?
-# Test å skrive ut NDC
 # Test å skrive ut Novacare
 
 # Melding dersom man kjører interpreter uten kode?
 # Melding om at buffer tømmes ved dobbelt klapp?
     
-# Stopp kodeinput når interpreter kjører? Ja?
-# Kjør på nytt med enkelt-klapp
-# Vis output + cells ved interpreting 
+# Start/stopp interpreter med enkelt-klapp
+# Vis output + cells med pointer ved interpreting 
 # Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
-# Håndter at resultat bare skrives èn gang når koden kjøres
     
-# Armene i kors for å slette siste tegn
+# Armene i kors, og senket hode, for å slette siste tegn
     
 # Vurder å kjøre koden raskere inne i en loop
