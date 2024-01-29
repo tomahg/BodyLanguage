@@ -28,7 +28,7 @@ class Visualnterpreter:
                     start = temp_jumpstack.pop()
                     jumpmap[start] = (char_number, line_number)
                     jumpmap[(char_number, line_number)] = start
-            return jumpmap
+        return jumpmap
 
     def input_code(self, code):
         self.code = code
