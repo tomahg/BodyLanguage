@@ -369,15 +369,15 @@ def main():
                         if clap_print2 == 0:
                             clap_display_for_frames = 10
                             clap_print2 = 1
-                        # If interpreter is running: stop it
-                        # Otherwise clear code buffer
-                        if execute_code:
-                            print('Stopping interpreter')
-                            execute_code = False
-                            finished_debug_and_print = False
-                        else:
-                            print('Clearing code')
-                            code = ''                        
+                            # If interpreter is running: stop it
+                            # Otherwise clear code buffer
+                            if execute_code:
+                                print('Stopping interpreter')
+                                execute_code = False
+                                finished_debug_and_print = False
+                            else:
+                                print('Clearing code')
+                                code = ''                        
                     elif clap_count == 1:
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
