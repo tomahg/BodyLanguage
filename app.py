@@ -181,9 +181,8 @@ def main():
                         lines_of_code.append(code_left_to_print.strip())
                         code_left_to_print = ''
 
-                for i, line_of_code in enumerate(lines_of_code[-MAX_LINES_OF_CODE:]):
-                    cv2.rectangle(frame, (0, i * 36), (w, 36 + i * 36), (0,0,0), -1)
-                    cv2.putText(frame, line_of_code.strip(), (int(HORIZONTAL_MARGIN / 2), i * 36 + 28), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2) 
+                interpreter.input_code(lines_of_code)
+                interpreter.PrintLinesOfCode(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
             if len(landmarks) and not pause:
                 elbow_r = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
@@ -339,6 +338,7 @@ def main():
                                     print('Executing code...')
                                     print(code)
                                     interpreter.input_code(lines_of_code)
+                                    interpreter.prepare()
                                     code_output = ''
                                     execute_code = True
                                 else:

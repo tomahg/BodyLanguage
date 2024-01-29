@@ -4,6 +4,8 @@
 # Each call to step returns the char index + line index of a non-space command + any output
 # When the end of the program is reaced (-1, -1, '') is returned
 
+import cv2
+
 class Visualnterpreter:
     code = []
     jumpmap = {}
@@ -26,6 +28,8 @@ class Visualnterpreter:
 
     def input_code(self, code):
         self.code = code
+
+    def prepare_code(self):
         self.jumpmap = self.build_jumpmap()
         self.cells = []
         self.cell_pointer = 0
@@ -88,3 +92,13 @@ class Visualnterpreter:
             self.code_pointer_line = -1
 
         return char, line, output
+
+    def PrintSingleLineOfCode(self, img, line_number, line_of_code, margin_h, color = (255, 0, 0)):
+        line_height = 36
+        line_margin_v = 8
+        cv2.rectangle(img, (0, line_number * line_height), (img.shape[1], line_height + line_number * line_height), (0,0,0), -1)
+        cv2.putText(img, line_of_code.strip(), (margin_h, line_number * line_height + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2)
+
+    def PrintLinesOfCode(self, img, n, margin_h):
+        for i, line_of_code in enumerate(self.code[-n:]):
+            self.PrintSingleLineOfCode(img, i, line_of_code, margin_h)
