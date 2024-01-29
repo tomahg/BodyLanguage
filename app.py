@@ -152,6 +152,7 @@ def main():
 
             h, w, c = frame.shape
             # w = 640
+            # h = 480
             if execute_code:
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
                 if not interpreter_paused and not interpreter_finished_debug_and_print:
@@ -160,9 +161,10 @@ def main():
                         code_output += o
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
-                        print(code_output)                    
+                        print(code_output)
+                interpreter.print_cells(frame)                
                 if not finished and not interpreter_paused:
-                    interpreter.highlight_debug_cmmand(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
+                    interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
   
             if show_grid_lines: 
                 cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
@@ -470,12 +472,7 @@ if __name__ == "__main__":
     main()
 
 # Test å skrive ut Novacare
-
 # Melding dersom man kjører interpreter uten kode?
-    
-# Vis output + cells med pointer ved interpreting 
 # Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!   
-    
-# Armene i kors, og senket hode, for å slette siste tegn
-    
-# Kjør raskere inni loop men også første gang
+# Vis output på skjerm
+# Vurder markering av siste oppdaterte celle + siste tegn av output

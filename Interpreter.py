@@ -146,7 +146,7 @@ class Visualnterpreter:
         for i, line_of_code in enumerate(self.code):
             self.debug_single_line_of_code(img, i, line_of_code, margin_h, 100)
 
-    def highlight_debug_cmmand(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
+    def highlight_debug_command(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
         if line_number == len(self.code):
             return
         line_height = 36
@@ -159,3 +159,28 @@ class Visualnterpreter:
             offset = 0
         command = self.code[line_number][char_number]
         cv2.putText(img, command, (margin_h + offset, 100 + line_number * line_height + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+
+    # Print the first 8 cells
+    #                   v
+    # +-------------------------------+
+    # | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 
+    # +-------------------------------+
+    def print_cells(self, img):
+        self.draw_black_alpha_box(img, 0, 428, 70, img.shape[1])
+        
+        # Draw cells
+        cv2.line(img, (4, 432), (636, 432), (255,255,255), 2)
+        cv2.line(img, (4, 476), (636, 476), (255,255,255), 2)
+        for i in range(4, 640, 79):
+            cv2.line(img, (i, 432), (i, 476), (255,255,255), 2)
+        
+        # Draw cell values
+        for i, cell in enumerate(self.cells[:8]):
+            offset = self.get_text_width(str(cell), cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
+            cv2.putText(img, str(cell), ((i + 1) * 79 - offset, 460), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2)
+            
+        # Draw pointer to current cell
+        xp = 40 + 79 * self.cell_pointer
+        #cv2.line(img, (xp, 385), (xp, 410), (255,0,0), 3)
+        cv2.line(img, (xp, 405), (xp - 15, 405 - 15), (0,0,255), 3)
+        cv2.line(img, (xp, 405), (xp + 15, 405 - 15), (0,0,255), 3)
