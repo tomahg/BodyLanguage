@@ -16,7 +16,8 @@ class Visualnterpreter:
     code_pointer_line = 0
     finished = False
     debug_slowdown_count = 0
-    debug_slowdown_factor = 2
+    debug_slowdown_factor = 3
+    in_loop_level = 0
 
     def build_jumpmap(self):
         temp_jumpstack, jumpmap = [], {}
@@ -41,21 +42,23 @@ class Visualnterpreter:
         self.code_pointer_line = 0
         self.debug_slowdown_count = 0
         self.finished = False
+        self.in_loop_level = 0
 
     def step(self):
         char = self.code_pointer_char
         line = self.code_pointer_line
         output = ''
 
-        if self.debug_slowdown_count % self.debug_slowdown_factor != 0:
-            self.debug_slowdown_count += 1
-            return False, char, line, '' 
-        else:
-            self.debug_slowdown_count = 1
+        if self.in_loop_level == 0:
+            if self.debug_slowdown_count % self.debug_slowdown_factor != 0:
+                self.debug_slowdown_count += 1
+                return False, char, line, '' 
+            else:
+                self.debug_slowdown_count = 1
 
         # No code, or point past last line
         if len(self.code) == 0:
-            print('No code to execure')
+            print('No code to execute')
             return True, char, line, ''
         elif len(self.code) == self.code_pointer_line:
             return True, char, line, ''
@@ -89,12 +92,18 @@ class Visualnterpreter:
             if self.cells[self.cell_pointer] < 0:
                 self.cells[self.cell_pointer] = 255
 
-        if command == "[" and self.cells[self.cell_pointer] == 0: 
-            self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
-        
-        if command == "]" and self.cells[self.cell_pointer] != 0: 
-            self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
-        
+        if command == "[":
+            if self.cells[self.cell_pointer] == 0: 
+                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
+            else:
+                self.in_loop_level += 1
+
+        if command == "]":
+            if self.cells[self.cell_pointer] != 0: 
+                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
+            else:
+                self.in_loop_level -= 1
+
         if command == ".": 
             output = chr(self.cells[self.cell_pointer])
 
