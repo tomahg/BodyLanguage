@@ -276,7 +276,7 @@ def main():
                         same_command_count += 1
                     else:
                         last_command = '-'
-                        if code.endswith('----'):
+                        if code.endswith('-----'):
                             code += ' ' + last_command
                         else:
                             code += last_command
