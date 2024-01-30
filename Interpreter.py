@@ -130,6 +130,10 @@ class Visualnterpreter:
     def get_text_width(self, text, font_face, font_scale, font_line_thickness):
         ((txt_w, _), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
         return txt_w
+    
+    def get_text_size(self, text, font_face, font_scale, font_line_thickness):
+        ((txt_w, txt_h), _) = cv2.getTextSize(text, font_face, font_scale, font_line_thickness)
+        return txt_w, txt_h    
 
     def draw_black_alpha_box(self, img, x, y, h, w):
         sub_img = img[y:y+h, x:x+w]
@@ -193,6 +197,23 @@ class Visualnterpreter:
 
     def print_outout(self, img, output):
         if len(output) > 0:
-            width = self.get_text_width(output, cv2.FONT_HERSHEY_PLAIN, 5, 3) - 4
-            self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])
-            cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380), cv2.FONT_HERSHEY_PLAIN, 5, (255,255,255), 3)
+            font_size = 5
+            font_thickness = 3
+            width, height = self.get_text_size(output, cv2.FONT_HERSHEY_PLAIN, font_size, font_thickness)
+            
+            # If text is too long, make it smaller - still only single line
+            while width > img.shape[1] - 10:
+                if font_size > 2:
+                    font_size -= 1
+                else:
+                    font_size *= 0.75
+                if font_thickness > 1:
+                    font_thickness -= 1
+                width, height = self.get_text_size(output, cv2.FONT_HERSHEY_PLAIN, font_size, font_thickness)
+
+            if width > 0 and height > 0:
+                # Consider changing the height of the box, or allow multipe lines, when text gets smaller
+                self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])      
+                # Offset to keep text centered, wile getting smaller
+                offset = int((47 - height) / 2)    
+                cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380 - offset), cv2.FONT_HERSHEY_PLAIN, font_size, (255,255,255), font_thickness)

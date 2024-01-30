@@ -475,4 +475,5 @@ if __name__ == "__main__":
 # Test å skrive ut Novacare
 # Melding dersom man kjører interpreter uten kode?
 # Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!
+# Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild
 # Readme
