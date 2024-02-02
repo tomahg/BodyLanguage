@@ -29,10 +29,14 @@ class Visualnterpreter:
                     temp_jumpstack.append((char_number, line_number))
                 if command == ']':
                     if len(temp_jumpstack) == 0:
+                        print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
                         return False, None
                     start = temp_jumpstack.pop()
                     jumpmap[start] = (char_number, line_number)
                     jumpmap[(char_number, line_number)] = start
+        if len (temp_jumpstack) > 0:
+            print('Syntax error: Unclosed loop detected!')
+            return False, None
         return True, jumpmap
 
     def input_code(self, code):
@@ -41,7 +45,6 @@ class Visualnterpreter:
     def prepare_code(self):
         ok, self.jumpmap = self.build_jumpmap()
         if not ok:
-            print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
             return False
         self.cells = []
         self.cell_pointer = 0

@@ -484,5 +484,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Håndter kode som ikke gir mening, som f.eks. ++][++. , også kun ] og ikke avsluttet [
 # Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild? Eller eksekvering settes på pause?
