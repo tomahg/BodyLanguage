@@ -346,7 +346,9 @@ def main():
                         same_command_count += 1
                     else:
                         last_command = '⌫'
-                        same_command_count = 0                        
+                        same_command_count = 0
+                        if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
+                            reload_code = True                    
                         code = code[:-1]
                     if same_command_count > COMMAND_DELAY:    
                         draw_white_apha_box(frame, 260-20, 95, 110, 120+40)
@@ -493,3 +495,8 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+
+# While running interpretation
+#  - Single clap: pause / resume
+#  - Double clap: stop
