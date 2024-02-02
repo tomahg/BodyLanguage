@@ -409,9 +409,12 @@ def main():
                                             execute_code = True
                                             interpreter_finished_debug_and_print = False
                                             interpreter_stopped = False
+                                    elif interpreter_paused:
+                                        print('Resuming interpreter...') 
+                                        interpreter_paused = False
                                     else:
-                                        print('Stopping interpreter...') 
-                                        interpreter_stopped = True
+                                        print('Pausing interpreter...') 
+                                        interpreter_paused = True
                                 else:
                                     if len(code) > 0:
                                         print('Starting interpreter...')
@@ -452,7 +455,7 @@ def main():
                             if execute_code:
                                 print('Stopping interpreter')
                                 execute_code = False
-                                finished_debug_and_print = False
+                                interpreter_paused = False
                             else:
                                 print('Clearing code')
                                 code = ''                        
