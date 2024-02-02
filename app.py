@@ -57,7 +57,7 @@ class PoseDetector() :
         if self.results.pose_landmarks:
             for id, lm in enumerate(self.results.pose_landmarks.landmark):
                 # Determining the pixel position of the landmarks
-                h, w, c = img.shape
+                h, w, _ = img.shape
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 self.landmark_list.append([id, cx, cy])
         return self.landmark_list
@@ -157,12 +157,12 @@ def main():
                 cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)
                 cv2.line(frame, (0, THRESHOLD_DUCK_Y), (w, THRESHOLD_DUCK_Y), (111,111,111), 2)
 
-            h, w, c = frame.shape
+            h, w, _ = frame.shape
             # w = 640
             # h = 480
             if execute_code:
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not interpreter_paused and not interpreter_finished_debug_and_print:
+                if not interpreter_paused and not interpreter_finished_debug_and_print and not pause:
                     finished, c, l, o = interpreter.step()
                     if o:
                         code_output += o
@@ -171,7 +171,7 @@ def main():
                         print(code_output)
                 interpreter.print_cells(frame) 
                 interpreter.print_outout(frame, code_output)              
-                if not finished and not interpreter_paused:
+                if pause or (not finished and not interpreter_paused and not interpreter_finished_debug_and_print):
                     interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
 
             if show_code_lines:
