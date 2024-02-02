@@ -110,6 +110,10 @@ def main():
     COMMAND_DELAY = 0
     COMMAND_DELAY_DELETE = 4
 
+    THRESHOLD_DUCK_Y = 428
+    THRESHOLD_LEFT_X = 200
+    THRESHOLD_RIGHT_X = 440
+
     show_code_lines = True
     show_grid_lines = False
 
@@ -150,6 +154,11 @@ def main():
             annotated_frame = detector.process(frame)
             landmarks = detector.find_pixel_positions(frame)
 
+            if show_grid_lines: 
+                cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
+                cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)
+                cv2.line(frame, (0, THRESHOLD_DUCK_Y), (w, THRESHOLD_DUCK_Y), (111,111,111), 2)
+
             h, w, c = frame.shape
             # w = 640
             # h = 480
@@ -166,11 +175,7 @@ def main():
                 interpreter.print_outout(frame, code_output)              
                 if not finished and not interpreter_paused:
                     interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
-  
-            if show_grid_lines: 
-                cv2.line(frame, (200, 0), (200, h), (111,111,111), 2)
-                cv2.line(frame, (440, 0), (440, h), (111,111,111), 2)
-                cv2.line(frame, (0, 440), (w, 440), (111,111,111), 2)
+
             if show_code_lines:
                 lines_of_code = []
                 code_left_to_print = code.strip()
@@ -268,7 +273,7 @@ def main():
                             cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
             
                 # Duck, shoulders below threshold
-                elif landmarks[PoseLandmark.LEFT_SHOULDER][2] > 450 and landmarks[PoseLandmark.RIGHT_SHOULDER][2] > 450: 
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][2] > THRESHOLD_DUCK_Y and landmarks[PoseLandmark.RIGHT_SHOULDER][2] > THRESHOLD_DUCK_Y: 
                     if last_command == '-':
                         same_command_count += 1
                     else:
@@ -283,7 +288,7 @@ def main():
                         cv2.putText(frame, '-', (280-20, 200-5), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the left
-                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] < 200 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 200:
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] < THRESHOLD_LEFT_X and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < THRESHOLD_LEFT_X:
                     if last_command == '<' or last_command == '[':
                         same_command_count += 1
                     else:
@@ -301,7 +306,7 @@ def main():
                         cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
                 
                 # Body to the right
-                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] > 440 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 440:
+                elif landmarks[PoseLandmark.LEFT_SHOULDER][1] > THRESHOLD_RIGHT_X and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > THRESHOLD_RIGHT_X:
                     if last_command == '>' or last_command == ']':
                         same_command_count += 1
                     else:
@@ -481,5 +486,3 @@ if __name__ == "__main__":
 
 # Håndter kode som ikke gir mening, som f.eks. ++][++. , også kun ] og ikke avsluttet [
 # Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild? Eller eksekvering settes på pause?
-# Grid lines må tegnes før debug, vurder å flytt lower threshold over cellene22222222222222222222222222222
-# Readme
