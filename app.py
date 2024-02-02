@@ -132,9 +132,11 @@ def main():
     print_lock = 0
     pause = False
     execute_code = False
+    reload_code = False
     code_output = ''
     interpreter_finished_debug_and_print = False
     interpreter_paused = False
+    interpreter_stopped = False
     interpreter = Visualnterpreter()
 
     # Menu
@@ -162,7 +164,7 @@ def main():
             # h = 480
             if execute_code:
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not interpreter_paused and not interpreter_finished_debug_and_print and not pause:
+                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause:
                     finished, c, l, o = interpreter.step()
                     if o:
                         code_output += o
@@ -171,7 +173,7 @@ def main():
                         print(code_output)
                 interpreter.print_cells(frame) 
                 interpreter.print_outout(frame, code_output)              
-                if pause or (not finished and not interpreter_paused and not interpreter_finished_debug_and_print):
+                if pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
                     interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
 
             if show_code_lines:
@@ -195,6 +197,15 @@ def main():
                         code_left_to_print = ''
 
                 interpreter.input_code(lines_of_code)
+
+                # If code is updated with [ or ] while running, we need to update jump map
+                if reload_code:
+                    reload_code = False                     
+                    ok = interpreter.build_jumpmap()
+                    interpreter_paused = not ok
+                    if interpreter_paused:
+                        print('Paused')
+
                 if not execute_code:
                     interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
@@ -299,6 +310,8 @@ def main():
                         if last_command != '[':
                             last_command = '['
                             code += last_command
+                            if execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
+                                reload_code = True
                         draw_white_apha_box(frame, 260, 95, 110, 120)
                         # [ is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -317,6 +330,8 @@ def main():
                         if last_command != ']':
                             last_command = ']'
                             code += last_command
+                            if execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
+                                reload_code = True
                         draw_white_apha_box(frame, 260, 95, 110, 120)
                         # ] is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -380,21 +395,21 @@ def main():
                         else:
                             if clap_count == 1:
                                 if execute_code:
-                                    if interpreter_finished_debug_and_print or interpreter_paused:
+                                    if interpreter_finished_debug_and_print or interpreter_stopped:
                                         print('Restarting interpreter...')
                                         print(code)
                                         interpreter.input_code(lines_of_code)
                                         ok = interpreter.prepare_code()
                                         code_output = ''
                                         if not ok:
-                                            interpreter_paused = True
+                                            interpreter_stopped = True
                                         else:
                                             execute_code = True
                                             interpreter_finished_debug_and_print = False
-                                            interpreter_paused = False
+                                            interpreter_stopped = False
                                     else:
                                         print('Stopping interpreter...') 
-                                        interpreter_paused = True
+                                        interpreter_stopped = True
                                 else:
                                     if len(code) > 0:
                                         print('Starting interpreter...')
@@ -403,11 +418,11 @@ def main():
                                         ok = interpreter.prepare_code()
                                         code_output = ''
                                         if not ok:
-                                            interpreter_paused = True
+                                            interpreter_stopped = True
                                         else:
                                             execute_code = True
                                             interpreter_finished_debug_and_print = False
-                                            interpreter_paused = False
+                                            interpreter_stopped = False
                                     else:
                                         print('No code to execute!')
                             clap_print1 = 0
@@ -478,5 +493,3 @@ def main():
     
 if __name__ == "__main__":
     main()
-
-# Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild? Eller eksekvering settes på pause?
