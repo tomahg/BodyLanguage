@@ -498,8 +498,3 @@ def main():
     
 if __name__ == "__main__":
     main()
-
-
-# While running interpretation
-#  - Single clap: pause / resume
-#  - Double clap: stop
