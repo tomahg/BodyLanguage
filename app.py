@@ -108,7 +108,6 @@ def main():
     HORIZONTAL_MARGIN = 10
 
     COMMAND_DELAY = 0
-    COMMAND_DELAY_DELETE = 4
 
     THRESHOLD_DUCK_Y = 428
     THRESHOLD_LEFT_X = 200
@@ -131,7 +130,6 @@ def main():
     clap_print2 = 0
 
     print_lock = 0
-    delete_lock = 0
     pause = False
     execute_code = False
     code_output = ''
@@ -334,10 +332,8 @@ def main():
                     else:
                         last_command = '⌫'
                         same_command_count = 0                        
-                    if same_command_count > COMMAND_DELAY_DELETE:
-                        if delete_lock == 0:
-                            delete_lock = 1
-                            code = code[:-1]
+                        code = code[:-1]
+                    if same_command_count > COMMAND_DELAY:    
                         draw_white_apha_box(frame, 260-20, 95, 110, 120+40)
                         # Draw something like this: ⌫
                         #      p2 ---- p4
@@ -371,7 +367,6 @@ def main():
                             if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
                                 last_command = 'default'
                                 print_lock = 0 # Must return to default between each print command
-                                delete_lock = 0
                                 
                     if clap_print1 == 1 or clap_print2 == 1:
                         if clap_display_for_frames > 0:
