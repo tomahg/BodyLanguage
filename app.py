@@ -92,7 +92,6 @@ def draw_white_apha_box(img, x, y, h, w):
     # https://stackoverflow.com/questions/56472024/how-to-change-the-opacity-of-boxes-cv2-rectangle
     sub_img = img[y:y+h, x:x+w]
     white_rect = np.ones(sub_img.shape, dtype=np.uint8) * 255
-
     res = cv2.addWeighted(sub_img, 0.5, white_rect, 0.5, 1.0)
 
     # Put the image back to its position
@@ -109,7 +108,7 @@ def main():
     HORIZONTAL_MARGIN = 10
 
     COMMAND_DELAY = 0
-    COMMAND_DELAY_DELETE = 2
+    COMMAND_DELAY_DELETE = 4
 
     show_code_lines = True
     show_grid_lines = False
@@ -128,6 +127,7 @@ def main():
     clap_print2 = 0
 
     print_lock = 0
+    delete_lock = 0
     pause = False
     execute_code = False
     code_output = ''
@@ -196,8 +196,6 @@ def main():
                     interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
             if len(landmarks) and not pause:
-                arm_l = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
-                arm_r = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                 elbow_l = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
                 elbow_r = detector.find_angle(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST)
                 upper_arm_l = detector.find_length(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
@@ -207,7 +205,6 @@ def main():
 
                 # Elbow positions
                 elbows_straight = elbow_l > 130 and elbow_r > 130
-                elbows_tucked = arm_l < 25 and arm_r < 25
                 # Arms horizontal, less then half an upper arm off
                 left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                 right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
@@ -321,19 +318,23 @@ def main():
                         # ] is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
 
-                # Arms crossed, elbows tucked, and lowered head, regretting                 
-                elif elbows_tucked and \
-                    (landmarks[PoseLandmark.LEFT_SHOULDER][2] + landmarks[PoseLandmark.RIGHT_SHOULDER][2]) / 2 < landmarks[PoseLandmark.NOSE][2] + (half_upper_arm / 2) and\
-                    landmarks[PoseLandmark.LEFT_WRIST][1] < landmarks[PoseLandmark.RIGHT_WRIST][1]:
+                # Facepalm
+                # Index finger horizontally between the outer eyes, above eyes, not too far above head
+                elif landmarks[PoseLandmark.LEFT_INDEX][1] < landmarks[PoseLandmark.LEFT_EYE_OUTER][1] \
+                        and landmarks[PoseLandmark.LEFT_INDEX][1] > landmarks[PoseLandmark.RIGHT_EYE_OUTER][1] \
+                        and landmarks[PoseLandmark.LEFT_INDEX][2] < landmarks[PoseLandmark.LEFT_EYE][2] \
+                        and landmarks[PoseLandmark.LEFT_INDEX][2] > landmarks[PoseLandmark.NOSE][2] - half_upper_arm:
                     if last_command == '⌫':
                         same_command_count += 1
                     else:
                         last_command = '⌫'
-                        same_command_count = 0
-                        code = code[:-1]
+                        same_command_count = 0                        
                     if same_command_count > COMMAND_DELAY_DELETE:
+                        if delete_lock == 0:
+                            delete_lock = 1
+                            code = code[:-1]
                         draw_white_apha_box(frame, 260-20, 95, 110, 120+40)
-                        # Try to draw something like this: ⌫
+                        # Draw something like this: ⌫
                         #      p2 ---- p4
                         #  p1           |
                         #      p3 ---- p5
@@ -349,7 +350,6 @@ def main():
                         cv2.line(frame, p4, p5, (0,0,255), 3)
                         cv2.line(frame, p2, p5, (0,0,255), 3)
                         cv2.line(frame, p3, p4, (0,0,255), 3)
-
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -357,7 +357,7 @@ def main():
                     same_command_count = 0 
 
                     # Dummy command to identify default position with arms down
-                    # Clapping should be performed in this position. buy with wrists higher then elbows
+                    # Clapping should be performed in this position. With wrists higher then elbows
                     shoulder_r = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
                     shoulder_l = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                     if shoulder_r < 60 and shoulder_l < 60: # arms facing downwards
@@ -366,6 +366,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
                                 last_command = 'default'
                                 print_lock = 0 # Must return to default between each print command
+                                delete_lock = 0
                                 
                     if clap_print1 == 1 or clap_print2 == 1:
                         if clap_display_for_frames > 0:
@@ -383,11 +384,14 @@ def main():
                                         print('Restarting interpreter...')
                                         print(code)
                                         interpreter.input_code(lines_of_code)
-                                        interpreter.prepare_code()
+                                        ok = interpreter.prepare_code()
                                         code_output = ''
-                                        execute_code = True
-                                        interpreter_finished_debug_and_print = False
-                                        interpreter_paused = False
+                                        if not ok:
+                                            interpreter_paused = True
+                                        else:
+                                            execute_code = True
+                                            interpreter_finished_debug_and_print = False
+                                            interpreter_paused = False
                                     else:
                                         print('Stopping interpreter...') 
                                         interpreter_paused = True
@@ -396,11 +400,14 @@ def main():
                                         print('Starting interpreter...')
                                         print(code)
                                         interpreter.input_code(lines_of_code)
-                                        interpreter.prepare_code()
+                                        ok = interpreter.prepare_code()
                                         code_output = ''
-                                        execute_code = True
-                                        interpreter_finished_debug_and_print = False
-                                        interpreter_paused = False
+                                        if not ok:
+                                            interpreter_paused = True
+                                        else:
+                                            execute_code = True
+                                            interpreter_finished_debug_and_print = False
+                                            interpreter_paused = False
                                     else:
                                         print('No code to execute!')
                             clap_print1 = 0
@@ -472,8 +479,7 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Test å skrive ut Novacare
-# Melding dersom man kjører interpreter uten kode?
-# Håndter kode som ikke gir mening, som f.eks. ++][++. Ja!
-# Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild
+# Håndter kode som ikke gir mening, som f.eks. ++][++. , også kun ] og ikke avsluttet [
+# Hvis i interpretermodus bør input av ] og eventuelt [ trigge jumpmap-rebuild? Eller eksekvering settes på pause?
+# Grid lines må tegnes før debug, vurder å flytt lower threshold over cellene22222222222222222222222222222
 # Readme

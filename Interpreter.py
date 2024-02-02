@@ -28,16 +28,21 @@ class Visualnterpreter:
                 if command == '[': 
                     temp_jumpstack.append((char_number, line_number))
                 if command == ']':
+                    if len(temp_jumpstack) == 0:
+                        return False, None
                     start = temp_jumpstack.pop()
                     jumpmap[start] = (char_number, line_number)
                     jumpmap[(char_number, line_number)] = start
-        return jumpmap
+        return True, jumpmap
 
     def input_code(self, code):
         self.code = code
 
     def prepare_code(self):
-        self.jumpmap = self.build_jumpmap()
+        ok, self.jumpmap = self.build_jumpmap()
+        if not ok:
+            print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
+            return False
         self.cells = []
         self.cell_pointer = 0
         self.code_pointer_char = 0
@@ -45,6 +50,7 @@ class Visualnterpreter:
         self.debug_slowdown_count = 0
         self.finished = False
         self.in_loop_level = 0
+        return True
 
     def step(self):
         char = self.code_pointer_char
@@ -75,6 +81,7 @@ class Visualnterpreter:
         if command == ">":
             self.cell_pointer += 1           
 
+        # Dynamically add more cells as needed
         if self.cell_pointer == len(self.cells):
             self.cells.append(0)
 
@@ -187,7 +194,7 @@ class Visualnterpreter:
             offset = self.get_text_width(str(cell), cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
             cv2.putText(img, str(cell), ((i + 1) * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, (255,255,255), 2)
             
-        # Draw pointer to current cell
+        # Draw pointer to current cell (cell pointer)
         xp = 40 + 79 * self.cell_pointer
         yp = 422
         cv2.line(img, (xp, yp), (xp - 20, yp - 15), (255,255,255), 5)
@@ -212,7 +219,7 @@ class Visualnterpreter:
                 width, height = self.get_text_size(output, cv2.FONT_HERSHEY_PLAIN, font_size, font_thickness)
 
             if width > 0 and height > 0:
-                # Consider changing the height of the box, or allow multipe lines, when text gets smaller
+                # Consider allowing multipe lines of output
                 self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])      
                 # Offset to keep text centered, wile getting smaller
                 offset = int((47 - height) / 2)    
