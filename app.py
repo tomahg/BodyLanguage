@@ -409,12 +409,6 @@ def main():
                                             execute_code = True
                                             interpreter_finished_debug_and_print = False
                                             interpreter_stopped = False
-                                    elif interpreter_paused:
-                                        print('Resuming interpreter...') 
-                                        interpreter_paused = False
-                                    else:
-                                        print('Pausing interpreter...') 
-                                        interpreter_paused = True
                                 else:
                                     if len(code) > 0:
                                         print('Starting interpreter...')
@@ -463,6 +457,14 @@ def main():
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
                             clap_print1 = 1
+                            # Pause / resume debugger immediately, without waiting for potential second clap
+                            if execute_code and not interpreter_finished_debug_and_print and not pause:
+                                if interpreter_paused:
+                                    print('Resuming interpreter...') 
+                                    interpreter_paused = False
+                                else:
+                                    print('Pausing interpreter...') 
+                                    interpreter_paused = True
                     elif clap_stage == 'wide' and clap_closing_timeframe > 0:
                         clap_closing_timeframe -= 1
 
@@ -498,3 +500,7 @@ def main():
     
 if __name__ == "__main__":
     main()
+
+# Hvis jumptable-feiler, marker feilen med røde symboler?
+# Vurder å endre slettesymbol til snakkeboble
+# Vurder å vise slettesymbol lenger (slik som klappesymbol)
