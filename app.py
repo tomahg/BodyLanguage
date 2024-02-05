@@ -99,7 +99,7 @@ def draw_white_apha_box(img, x, y, h, w):
 
 def main():
     detector = PoseDetector()
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     FONT_SIZE = 10
     FONT_WEIGHT = 10
