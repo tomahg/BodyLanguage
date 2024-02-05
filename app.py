@@ -140,6 +140,8 @@ def main():
     interpreter_error = False
     interpreter_error_line = 0
     interpreter_error_char = 0
+    step_forward = False
+    step_back = False
     interpreter = Visualnterpreter()
 
     # Menu
@@ -168,10 +170,16 @@ def main():
             if execute_code:
                 finished = False
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause:
-                    finished, c, l, o = interpreter.step()
+                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and step_forward):
+                    if interpreter_paused:
+                        if step_forward:
+                            step_forward = False
+                            finished, c, l, o = interpreter.step(single_step=True)
+                    else:
+                        finished, c, l, o = interpreter.step()
                     if o:
                         code_output += o
+                            
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
                         print(code_output)
@@ -227,11 +235,33 @@ def main():
                 upper_arm = int((upper_arm_l + upper_arm_r) / 2)
 
                 # Elbow positions
-                elbows_straight = elbow_l > 130 and elbow_r > 130
+                elbow_left_straight = elbow_l > 130
+                elbow_right_straight = elbow_r > 130
+                elbows_straight = elbow_left_straight and elbow_right_straight
                 # Arms horizontal, less then half an upper arm off
                 left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                 right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
-                if elbows_straight and left_arm_horizonal and right_arm_horizonal:
+
+                # Stepping debugger forward/back
+                if interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
+                    # Remberer that left and right are mirrored
+                    if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
+                        if last_command == '-->':
+                            same_command_count += 1
+                        elif (last_command == 'default' or last_command == ''):
+                            last_command = '-->'
+                            same_command_count = 0
+                            step_forward = True
+                    elif elbow_right_straight and right_arm_horizonal and not (elbow_left_straight and left_arm_horizonal):
+                        if last_command == '<--':
+                            same_command_count += 1
+                        elif (last_command == 'default' or last_command == ''):
+                            last_command = '<--'
+                            same_command_count = 0
+                            step_back = True
+                
+                # Arms out, printing
+                elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
                     if last_command == '.':
                         same_command_count += 1
                     elif print_lock == 0: # Avoid triggering double .
@@ -449,7 +479,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 if landmarks[PoseLandmark.LEFT_SHOULDER][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_SHOULDER][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     clap_stage = 'wide' 
-                                    clap_closing_timeframe = 5    
+                                    clap_closing_timeframe = 7    
                         if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
@@ -516,6 +546,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Hvis jumptable-feiler, marker feilen med røde symboler?
 # Vurder å endre slettesymbol til snakkeboble
 # Vurder å vise slettesymbol lenger (slik som klappesymbol)

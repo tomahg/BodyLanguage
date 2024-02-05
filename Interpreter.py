@@ -20,6 +20,7 @@ class Visualnterpreter:
     debug_slowdown_count = 0
     debug_slowdown_factor = 3
     in_loop_level = 0
+    last_movement_forward = True
 
     def build_jumpmap(self):
         temp_jumpstack, jumpmap = [], {}
@@ -50,38 +51,45 @@ class Visualnterpreter:
             return False, (l, c)
         self.cells = []
         self.cell_pointer = 0
-        self.code_pointer_char = 0
+        self.code_pointer_char = -1
         self.code_pointer_line = 0
         self.debug_slowdown_count = 0
         self.finished = False
         self.in_loop_level = 0
         return True, (l, c)
 
-    def step(self, throttle = True, reverse = False):
-        char = self.code_pointer_char
-        line = self.code_pointer_line
-        output = ''
-
-        if self.in_loop_level == 0:
-            if self.debug_slowdown_count % self.debug_slowdown_factor != 0:
-                self.debug_slowdown_count += 1
-                return False, char, line, '' 
-            else:
-                self.debug_slowdown_count = 1
-
-        # No code, or point past last line
+    def step(self, single_step = False):
+        # No code
         if len(self.code) == 0:
             print('No code to execute')
-            return True, char, line, ''
-        elif self.code_pointer_line >= len(self.code) or self.code_pointer_char >= len(self.code[self.code_pointer_line - 1]):
-            return True, len(self.code[self.code_pointer_line - 1]) - 1, line, ''
+            return True, 0, 0, ''
+
+        # Step, step, step
+        if not single_step and self.in_loop_level == 0 and self.debug_slowdown_count % self.debug_slowdown_factor != 0:
+            self.debug_slowdown_count += 1
+            return False, self.code_pointer_char, self.code_pointer_line, '' 
+        else:
+            self.debug_slowdown_count = 1
+            if self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
+                self.code_pointer_char += 1
+            elif self.code_pointer_line < len(self.code):
+                self.code_pointer_char = 0
+                self.code_pointer_line += 1
+
+        # Point past last line
+        if self.code_pointer_line >= len(self.code) or self.code_pointer_char >= len(self.code[self.code_pointer_line]):
+            return True, len(self.code[self.code_pointer_line - 1]), self.code_pointer_line, ''       
 
         command = self.code[self.code_pointer_line][self.code_pointer_char]
+
         # Handle formatted with single spaces, never double
         if command == ' ':
             self.code_pointer_char += 1
-            char = self.code_pointer_char
             command = self.code[self.code_pointer_line][self.code_pointer_char]
+
+        char = self.code_pointer_char
+        line = self.code_pointer_line
+        output = ''
 
         if command == ">":
             self.cell_pointer += 1           
@@ -108,26 +116,20 @@ class Visualnterpreter:
 
         if command == "[":
             if self.cells[self.cell_pointer] == 0: 
-                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
+                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(char, line)]
             else:
                 self.in_loop_level += 1
 
         if command == "]":
             if self.cells[self.cell_pointer] != 0: 
-                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(self.code_pointer_char, self.code_pointer_line)]
+                self.code_pointer_char, self.code_pointer_line = self.jumpmap[(char, line)]
             else:
                 self.in_loop_level -= 1
 
         if command == ".": 
             output = chr(self.cells[self.cell_pointer])
 
-        if self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
-            self.code_pointer_char += 1
-        elif self.code_pointer_line < len(self.code):
-            self.code_pointer_char = 0
-            self.code_pointer_line += 1
-
-        return False, char, line, output
+        return False, self.code_pointer_char, self.code_pointer_line, output
 
     def print_single_line_of_code(self, img, line_number, line_of_code, margin_h, color = (255,255,255)):
         line_height = 36
