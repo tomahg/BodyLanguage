@@ -137,6 +137,9 @@ def main():
     interpreter_finished_debug_and_print = False
     interpreter_paused = False
     interpreter_stopped = False
+    interpreter_error = False
+    interpreter_error_line = 0
+    interpreter_error_char = 0
     interpreter = Visualnterpreter()
 
     # Menu
@@ -163,6 +166,7 @@ def main():
             # w = 640
             # h = 480
             if execute_code:
+                finished = False
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
                 if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause:
                     finished, c, l, o = interpreter.step()
@@ -172,8 +176,10 @@ def main():
                         interpreter_finished_debug_and_print = True
                         print(code_output)
                 interpreter.print_cells(frame) 
-                interpreter.print_outout(frame, code_output)              
-                if pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
+                interpreter.print_outout(frame, code_output)
+                if interpreter_error:
+                    interpreter.highlight_debug_command(frame, interpreter_error_char, interpreter_error_line, (int(HORIZONTAL_MARGIN / 2)), (0, 0, 255))
+                elif pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
                     interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
 
             if show_code_lines:
@@ -201,9 +207,12 @@ def main():
                 # If code is updated with [ or ] while running, we need to update jump map
                 if reload_code:
                     reload_code = False                     
-                    ok = interpreter.build_jumpmap()
+                    ok, (interpreter_error_line, interpreter_error_char) = interpreter.build_jumpmap()
+                    if ok:
+                        interpreter_error = False
                     interpreter_paused = not ok
                     if interpreter_paused:
+                        interpreter_error = True
                         print('Paused')
 
                 if not execute_code:
@@ -401,27 +410,33 @@ def main():
                                         print('Restarting interpreter...')
                                         print(code)
                                         interpreter.input_code(lines_of_code)
-                                        ok = interpreter.prepare_code()
+                                        ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
                                         code_output = ''
+                                        execute_code = True
                                         if not ok:
+                                            interpreter_error = True
                                             interpreter_stopped = True
                                         else:
-                                            execute_code = True
-                                            interpreter_finished_debug_and_print = False
+                                            interpreter_error = False
+                                            interpreter_paused = False
                                             interpreter_stopped = False
+                                            interpreter_finished_debug_and_print = False
                                 else:
                                     if len(code) > 0:
                                         print('Starting interpreter...')
                                         print(code)
                                         interpreter.input_code(lines_of_code)
-                                        ok = interpreter.prepare_code()
+                                        ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
                                         code_output = ''
+                                        execute_code = True
                                         if not ok:
+                                            interpreter_error = True
                                             interpreter_stopped = True
-                                        else:
-                                            execute_code = True
-                                            interpreter_finished_debug_and_print = False
+                                        else:                                                                                        
+                                            interpreter_error = False
+                                            interpreter_paused = False
                                             interpreter_stopped = False
+                                            interpreter_finished_debug_and_print = False
                                     else:
                                         print('No code to execute!')
                             clap_print1 = 0

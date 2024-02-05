@@ -30,23 +30,24 @@ class Visualnterpreter:
                 if command == ']':
                     if len(temp_jumpstack) == 0:
                         print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
-                        return False
+                        return False, (line_number, char_number)
                     start = temp_jumpstack.pop()
                     jumpmap[start] = (char_number, line_number)
                     jumpmap[(char_number, line_number)] = start
         if len (temp_jumpstack) > 0:
+            (char_number, line_number) = temp_jumpstack.pop()
             print('Syntax error: Unclosed loop detected!')
-            return False
+            return False, (line_number, char_number)
         self.jumpmap = jumpmap
-        return True
+        return True, (0, 0)
 
     def input_code(self, code):
         self.code = code
 
     def prepare_code(self):
-        ok = self.build_jumpmap()
+        ok, (l, c) = self.build_jumpmap()
         if not ok:
-            return False
+            return False, (l, c)
         self.cells = []
         self.cell_pointer = 0
         self.code_pointer_char = 0
@@ -54,9 +55,9 @@ class Visualnterpreter:
         self.debug_slowdown_count = 0
         self.finished = False
         self.in_loop_level = 0
-        return True
+        return True, (l, c)
 
-    def step(self):
+    def step(self, throttle = True, reverse = False):
         char = self.code_pointer_char
         line = self.code_pointer_line
         output = ''
@@ -72,8 +73,8 @@ class Visualnterpreter:
         if len(self.code) == 0:
             print('No code to execute')
             return True, char, line, ''
-        elif len(self.code) == self.code_pointer_line:
-            return True, char, line, ''
+        elif self.code_pointer_line >= len(self.code) or self.code_pointer_char >= len(self.code[self.code_pointer_line - 1]):
+            return True, len(self.code[self.code_pointer_line - 1]) - 1, line, ''
 
         command = self.code[self.code_pointer_line][self.code_pointer_char]
         # Handle formatted with single spaces, never double
@@ -166,7 +167,7 @@ class Visualnterpreter:
             self.debug_single_line_of_code(img, i, line_of_code, margin_h, self.INTERPRETER_OFFSET_Y)
 
     def highlight_debug_command(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
-        if line_number == len(self.code):
+        if line_number >= len(self.code) or char_number >= len(self.code[line_number]):
             return
         line_height = 36
         line_margin_v = 8
