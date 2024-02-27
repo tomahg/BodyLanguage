@@ -21,6 +21,7 @@ class Visualnterpreter:
     debug_slowdown_factor = 3
     in_loop_level = 0
     last_movement_forward = True
+    history = []
 
     def build_jumpmap(self):
         temp_jumpstack, jumpmap = [], {}
@@ -56,6 +57,7 @@ class Visualnterpreter:
         self.debug_slowdown_count = 0
         self.finished = False
         self.in_loop_level = 0
+        self.history = []
         return True, (l, c)
 
     def step(self, single_step = False):
@@ -67,10 +69,13 @@ class Visualnterpreter:
         # Step, step, step
         if not single_step and self.in_loop_level == 0 and self.debug_slowdown_count % self.debug_slowdown_factor != 0:
             self.debug_slowdown_count += 1
-            return False, self.code_pointer_char, self.code_pointer_line, '' 
+            return False, False, self.code_pointer_char, self.code_pointer_line, '' 
         else:
             self.debug_slowdown_count = 1
-            if self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
+            if self.code_pointer_char == None:
+                self.code_pointer_char = 0
+                self.code_pointer_line = 0
+            elif self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
                 self.code_pointer_char += 1
             elif self.code_pointer_line < len(self.code):
                 self.code_pointer_char = 0
@@ -78,7 +83,7 @@ class Visualnterpreter:
 
         # Point past last line
         if self.code_pointer_line >= len(self.code) or self.code_pointer_char >= len(self.code[self.code_pointer_line]):
-            return True, len(self.code[self.code_pointer_line - 1]), self.code_pointer_line, ''       
+            return True, True, len(self.code[self.code_pointer_line - 1]), self.code_pointer_line, ''       
 
         command = self.code[self.code_pointer_line][self.code_pointer_char]
 
@@ -129,7 +134,28 @@ class Visualnterpreter:
         if command == ".": 
             output = chr(self.cells[self.cell_pointer])
 
-        return False, self.code_pointer_char, self.code_pointer_line, output
+        self.last_movement_forward = True
+        return False, True, self.code_pointer_char, self.code_pointer_line, output
+
+    def history_append(self, historic_output):
+        self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
+
+    def step_back(self):
+        if len(self.history) < 2:
+            self.code_pointer_char = None
+            self.code_pointer_line = None
+            self.cell_pointer = 0
+            self.cells = []
+            return False, False, None, None, ''
+        finished, remember, char, line, cell_pointer, cells, output = self.history[-2]
+        self.code_pointer_char = char
+        self.code_pointer_line = line
+        self.cell_pointer = cell_pointer
+        self.cells = cells[:]
+
+        _ = self.history.pop()
+        self.last_movement_forward = False
+        return (finished, remember, char, line, output)
 
     def print_single_line_of_code(self, img, line_number, line_of_code, margin_h, color = (255,255,255)):
         line_height = 36
@@ -169,6 +195,8 @@ class Visualnterpreter:
             self.debug_single_line_of_code(img, i, line_of_code, margin_h, self.INTERPRETER_OFFSET_Y)
 
     def highlight_debug_command(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
+        if char_number == None or line_number == None:
+            return
         if line_number >= len(self.code) or char_number >= len(self.code[line_number]):
             return
         line_height = 36
@@ -188,6 +216,9 @@ class Visualnterpreter:
     # | 0 | 0 | 0 | 0 | 3 | 0 | 0 | 0 | 
     # +-------------------------------+
     def print_cells(self, img):
+        if self.cell_pointer == None:
+            return
+
         self.draw_black_alpha_box(img, 0, 428, 70, img.shape[1])
         
         # Draw cells

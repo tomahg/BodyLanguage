@@ -170,15 +170,24 @@ def main():
             if execute_code:
                 finished = False
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and step_forward):
+                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and not interpreter_finished_debug_and_print and (step_forward or step_back)):
+                    complete_outout = None
                     if interpreter_paused:
                         if step_forward:
                             step_forward = False
-                            finished, c, l, o = interpreter.step(single_step=True)
+                            finished, remember, c, l, o = interpreter.step(single_step=True)
+                        if step_back:
+                            step_back = False
+                            finished, remember, c, l, complete_outout = interpreter.step_back()
                     else:
-                        finished, c, l, o = interpreter.step()
+                        finished, remember, c, l, o = interpreter.step()
                     if o:
                         code_output += o
+                    if complete_outout != None:
+                        code_output = complete_outout
+                    
+                    if remember:
+                        interpreter.history_append(code_output)
                             
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
@@ -188,7 +197,7 @@ def main():
                 if interpreter_error:
                     interpreter.highlight_debug_command(frame, interpreter_error_char, interpreter_error_line, (int(HORIZONTAL_MARGIN / 2)), (0, 0, 255))
                 elif pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
-                    interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))
+                    interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))                        
 
             if show_code_lines:
                 lines_of_code = []
@@ -479,7 +488,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 if landmarks[PoseLandmark.LEFT_SHOULDER][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_SHOULDER][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     clap_stage = 'wide' 
-                                    clap_closing_timeframe = 7    
+                                    clap_closing_timeframe = 15    
                         if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
@@ -547,4 +556,4 @@ if __name__ == "__main__":
     main()
 
 # Vurder å endre slettesymbol til snakkeboble
-# Vurder å vise slettesymbol lenger (slik som klappesymbol)
+# Må sjekke for begge armer ut, før det sjekkes for én arm ut
