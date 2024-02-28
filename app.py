@@ -514,7 +514,7 @@ def main():
                             clap_display_for_frames = 10
                             clap_print1 = 1
                             # Pause / resume debugger immediately, without waiting for potential second clap
-                            if execute_code and not interpreter_finished_debug_and_print and not pause:
+                            if execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
                                 if interpreter_paused:
                                     print('Resuming interpreter...') 
                                     interpreter_paused = False
@@ -558,5 +558,4 @@ if __name__ == "__main__":
     main()
 
 # Vurder å endre slettesymbol til snakkeboble
-# Må håndtere step forbi slutten av koden
-# Når koden kjører til slutt, man stepper tilbake, og så starter autokjøring – må koden starte fra rett sted
+# Må håndtere step forbi slutten av koden, gjør det samme på to step forbi som på ett step
