@@ -170,7 +170,7 @@ def main():
             if execute_code:
                 finished = False
                 interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and not interpreter_finished_debug_and_print and (step_forward or step_back)):
+                if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and (step_forward or step_back)):
                     complete_outout = None
                     if interpreter_paused:
                         if step_forward:
@@ -178,6 +178,7 @@ def main():
                             finished, remember, c, l, o = interpreter.step(single_step=True)
                         if step_back:
                             step_back = False
+                            interpreter_finished_debug_and_print = False
                             finished, remember, c, l, complete_outout = interpreter.step_back()
                     else:
                         finished, remember, c, l, o = interpreter.step()
@@ -191,6 +192,7 @@ def main():
                             
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
+                        interpreter_paused = True
                         print(code_output)
                 interpreter.print_cells(frame) 
                 interpreter.print_outout(frame, code_output)
@@ -251,8 +253,22 @@ def main():
                 left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                 right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
 
+                # Arms out, printing
+                if elbows_straight and left_arm_horizonal and right_arm_horizonal:
+                    if last_command == '.':
+                        same_command_count += 1
+                    elif print_lock == 0: # Avoid triggering double .
+                        print_lock = 1
+                        last_command = '.'
+                        code += last_command
+                        same_command_count = 0
+                    if same_command_count > COMMAND_DELAY:
+                        draw_white_apha_box(frame, 260, 95, 110, 120)
+                        # Print . a litle higher than other commands
+                        cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+
                 # Stepping debugger forward/back
-                if interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
+                elif interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
                     # Remberer that left and right are mirrored
                     if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
                         if last_command == '-->':
@@ -268,20 +284,6 @@ def main():
                             last_command = '<--'
                             same_command_count = 0
                             step_back = True
-                
-                # Arms out, printing
-                elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
-                    if last_command == '.':
-                        same_command_count += 1
-                    elif print_lock == 0: # Avoid triggering double .
-                        print_lock = 1
-                        last_command = '.'
-                        code += last_command
-                        same_command_count = 0
-                    if same_command_count > COMMAND_DELAY:
-                        draw_white_apha_box(frame, 260, 95, 110, 120)
-                        # Print . a litle higher than other commands
-                        cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                 # Double-up, not included in original spec
                 elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
