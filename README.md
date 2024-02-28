@@ -1,12 +1,12 @@
-# Gesture controlled brainf\*ck interpreter
+# Gesture controlled brainfuck interpreter
 
 #### Introduction
 
-This interpreter let the user input, and debug, brainf\*uck code in a visual manner using only body gestures – keyboard are completely optional.
+This interpreter let the user input, and debug, brainfuck code in a visual manner using only body gestures – keyboard are completely optional.
 
-##### What is brainf\*ck
+##### What is brainfuck
 
-Brainf\*ck is a an esoteric programming language created by Urban Müller in 1993. When the program starts, you have a array initialized to only zeros. Like this. Some implementations have a fixed array length of 30,000 items. Others, like mine, just adds new cells to the array when it gets full.
+Brainfuck is a an esoteric programming language created by Urban Müller in 1993. When the program starts, you have a array initialized to only zeros. Like this. Some implementations have a fixed array length of 30,000 items. Others, like mine, just adds new cells to the array when it gets full.
 
 ```
 [0][0][0][0][0][0][0][0][0][0]
@@ -19,7 +19,7 @@ When the program starts, a cell pointer points to the first cell like this. From
  ^
 ```
 
-The programming language brainf\*ck has only eight commands, all of them is only a simple character.
+The programming language brainfuck has only eight commands, all of them is only a simple character.
 
 -   \> : move cell pointer to the right.
 -   < : move cell pointer to the left.
@@ -30,13 +30,13 @@ The programming language brainf\*ck has only eight commands, all of them is only
 -   \[ : start a loop, if current cell value is 0, jump past corresponding end of loop
 -   \] : end a loop, jump back to corresponding start of loop, if current cell value is not 0
 
-That's all there is to say about [brainf\*ck](https://esolangs.org/wiki/Brainfuck).
+That's all there is to say about [brainfuck](https://esolangs.org/wiki/Brainfuck).
 
-##### What is bodyf\*ck
+##### What is bodyfuck
 
-Bodyf\*ck is a gestural extension of brainfuck, created by Nikolaos Hanselmann in 2009. Based on a YouTube video that demonstrates his usage, and a few articles I have recreated an interpreter for this very strange language.
+Bodyfuck is a gestural extension of brainfuck, created by Nikolaos Hanselmann in 2009. Based on a YouTube video that demonstrates his usage, and a few articles I have recreated an interpreter for this very strange language.
 
-That's all there is to say about [bodyf\*ck](https://esolangs.org/wiki/Bodyfuck).
+That's all there is to say about [bodyfuck](https://esolangs.org/wiki/Bodyfuck).
 
 ### What I have created
 
@@ -45,11 +45,11 @@ Using the [MediaPipe](https://developers.google.com/mediapipe) library from Goog
 I use [Open CV](https://opencv.org/) for streaming the video from my webcam, and also to draw on the video stream.
 
 -   For each recognized move, the move is drawn on screen.
--   The complerte brainf\*uck code is drawn on screen.
--   When running/debugging the code, the current brainf\*ck character is highlighted.
+-   The complerte brainfuck code is drawn on screen.
+-   When running/debugging the code, the current brainfuck character is highlighted.
 -   When running/debugging the code, I draw the eight first cells of the datastructure at the bottom of the screen.
 
-#### Commands from the original bodyf\*ck language that I have implemented
+#### Commands from the original bodyfuck language that I have implemented
 
 -   Increment current cell: Raise one hand.
 -   Decrement current cell: Duck below threshold.
@@ -65,7 +65,7 @@ Notice the input is not implemented, neither by me nor Nikolaos Hanselmann
 
 #### Additional commands I have implemented, to ease the developer experience
 
--   Double increment: Raises both hands at the same time. Implemented because brainf\*ck/bodyf\*ck normally involves a lot of incrementing.
+-   Double increment: Raises both hands at the same time. Implemented because brainfuck/bodyfuck normally involves a lot of incrementing.
 -   Delete single character: Facepalming with your right hand. Implemented because humans make typos!
 -   Single step code intepreter when paused: Pint to the right with a straight right arm.
 
@@ -107,6 +107,6 @@ For debugging there are some keyboard commands awailable
 -   4: Clear all code
 -   5: Pause code input
 
-Of course, the use of keyboard command is frowned upon by the bodyf\*ck community.
+Of course, the use of keyboard command is frowned upon by the bodyfuck community.
 
 Enjoy!
