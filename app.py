@@ -558,4 +558,5 @@ if __name__ == "__main__":
     main()
 
 # Vurder å endre slettesymbol til snakkeboble
-# Må sjekke for begge armer ut, før det sjekkes for én arm ut
+# Må håndtere step forbi slutten av koden
+# Når koden kjører til slutt, man stepper tilbake, og så starter autokjøring – må koden starte fra rett sted
