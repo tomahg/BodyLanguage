@@ -560,6 +560,3 @@ def main():
     
 if __name__ == "__main__":
     main()
-
-# TODO
-# Change backspace symbol to «Do'h!» speech bubble?
