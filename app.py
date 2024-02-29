@@ -189,6 +189,10 @@ def main():
                     
                     if remember:
                         interpreter.history_append(code_output)
+
+                    if finished:
+                        # When resuming interpreting after stepping, make sure we not start from beginning after finishing
+                        clap_count = 0
                             
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
@@ -557,5 +561,5 @@ def main():
 if __name__ == "__main__":
     main()
 
-# Vurder å endre slettesymbol til snakkeboble
-# Start av koden når den er pauset må bare kjøre ferdig én gang
+# TODO
+# Change backspace symbol to «Do'h!» speech bubble?
