@@ -558,4 +558,4 @@ if __name__ == "__main__":
     main()
 
 # Vurder å endre slettesymbol til snakkeboble
-# Må håndtere step forbi slutten av koden, gjør det samme på to step forbi som på ett step
+# Start av koden når den er pauset må bare kjøre ferdig én gang

@@ -83,7 +83,9 @@ class Visualnterpreter:
 
         # Point past last line
         if self.code_pointer_line >= len(self.code) or self.code_pointer_char >= len(self.code[self.code_pointer_line]):
-            return True, True, len(self.code[self.code_pointer_line - 1]), self.code_pointer_line, ''       
+            self.code_pointer_char = len(self.code[self.code_pointer_line - 1])
+            self.code_pointer_line = len(self.code) - 1
+            return True, True, self.code_pointer_char, self.code_pointer_line, ''       
 
         command = self.code[self.code_pointer_line][self.code_pointer_char]
 
@@ -138,8 +140,9 @@ class Visualnterpreter:
         return False, True, self.code_pointer_char, self.code_pointer_line, output
 
     def history_append(self, historic_output):
-        self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
-
+        if len(self.history) < sum(len(s) for s in self.code):
+            self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
+  
     def step_back(self):
         if len(self.history) < 2:
             self.code_pointer_char = None
