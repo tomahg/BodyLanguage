@@ -1,4 +1,5 @@
 from Interpreter import Visualnterpreter
+from DrawUtils import SpeechBubble
 import math
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
@@ -143,6 +144,7 @@ def main():
     step_forward = False
     step_back = False
     interpreter = Visualnterpreter()
+    speech_bubble = SpeechBubble()
 
     # Menu
     print('1: Toggle code view')
@@ -390,11 +392,11 @@ def main():
                         # ] is strangely large, print it a little smaller, and further up, than other commands
                         cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
 
-                # Facepalm
+                # Facepalm (right handed)
                 # Index finger horizontally between the outer eyes, above eyes, not too far above head
                 elif landmarks[PoseLandmark.LEFT_INDEX][1] < landmarks[PoseLandmark.LEFT_EYE_OUTER][1] \
                         and landmarks[PoseLandmark.LEFT_INDEX][1] > landmarks[PoseLandmark.RIGHT_EYE_OUTER][1] \
-                        and landmarks[PoseLandmark.LEFT_INDEX][2] < landmarks[PoseLandmark.LEFT_EYE][2] \
+                        and landmarks[PoseLandmark.LEFT_INDEX][2] < landmarks[PoseLandmark.NOSE][2] \
                         and landmarks[PoseLandmark.LEFT_INDEX][2] > landmarks[PoseLandmark.NOSE][2] - half_upper_arm:
                     if last_command == '⌫':
                         same_command_count += 1
@@ -404,24 +406,10 @@ def main():
                         if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
                             reload_code = True                    
                         code = code[:-1]
-                    if same_command_count > COMMAND_DELAY:    
-                        draw_white_apha_box(frame, 260-20, 95, 110, 120+40)
-                        # Draw something like this: ⌫
-                        #      p2 ---- p4
-                        #  p1           |
-                        #      p3 ---- p5
-                        p1 = (250, 150)
-                        p2 = (300, 115)
-                        p3 = (300, 185)
-                        p4 = (390, 115)
-                        p5 = (390, 185)
-                        cv2.line(frame, p1, p2, (0,0,255), 3)
-                        cv2.line(frame, p2, p4, (0,0,255), 3)
-                        cv2.line(frame, p1, p3, (0,0,255), 3)
-                        cv2.line(frame, p3, p5, (0,0,255), 3)
-                        cv2.line(frame, p4, p5, (0,0,255), 3)
-                        cv2.line(frame, p2, p5, (0,0,255), 3)
-                        cv2.line(frame, p3, p4, (0,0,255), 3)
+                    if same_command_count > COMMAND_DELAY:
+                        bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
+                        bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
+                        speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -429,10 +417,10 @@ def main():
                     same_command_count = 0 
 
                     # Dummy command to identify default position with arms down
-                    # Clapping should be performed in this position. With wrists higher then elbows
+                    # Clapping should be performed while starting in this position. With wrists higher than elbows
                     shoulder_r = detector.find_angle(PoseLandmark.LEFT_HIP, PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW)
                     shoulder_l = detector.find_angle(PoseLandmark.RIGHT_HIP, PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
-                    if shoulder_r < 60 and shoulder_l < 60: # arms facing downwards
+                    if shoulder_r < 60 and shoulder_l < 60: # Arms facing downwards
                         # Remember that right and left are mirrored, because the image is flipped
                         if landmarks[PoseLandmark.LEFT_SHOULDER][1] < 500 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < 500: # not too far right
                             if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
@@ -499,7 +487,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
                                 clap_count += 1
-                                print('clap', clap_count)
+                                print('Clap', clap_count)
                     if clap_count >= 2:
                         if clap_print2 == 0:
                             clap_display_for_frames = 10

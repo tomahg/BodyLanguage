@@ -140,7 +140,7 @@ class Visualnterpreter:
         return False, True, self.code_pointer_char, self.code_pointer_line, output
 
     def history_append(self, historic_output):
-        if len(self.history) < sum(len(s) for s in self.code):
+        if self.code_pointer_line <= len(self.code) and self.code_pointer_char <= len(self.code[self.code_pointer_line]):
             self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
   
     def step_back(self):
@@ -262,6 +262,6 @@ class Visualnterpreter:
             if width > 0 and height > 0:
                 # Consider allowing multipe lines of output
                 self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])      
-                # Offset to keep text centered, wile getting smaller
+                # Offset to keep text centered, while getting smaller
                 offset = int((47 - height) / 2)    
                 cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380 - offset), cv2.FONT_HERSHEY_PLAIN, font_size, (255,255,255), font_thickness)
