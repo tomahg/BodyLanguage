@@ -109,10 +109,10 @@ def main():
     HORIZONTAL_MARGIN = 10
 
     COMMAND_DELAY = 0
-
-    THRESHOLD_DUCK_Y = 428
-    THRESHOLD_LEFT_X = 200
-    THRESHOLD_RIGHT_X = 440
+    THRESHOLD_DUCK_Y = 430 # Alfa: 200, Indoor: 430, Hareid: 240
+    THRESHOLD_EDGE = 240
+    THRESHOLD_LEFT_X = THRESHOLD_EDGE
+    THRESHOLD_RIGHT_X = 640 - THRESHOLD_EDGE
 
     show_code_lines = True
     show_grid_lines = False
