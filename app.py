@@ -517,6 +517,7 @@ def main():
                         clap_closing_timeframe -= 1
 
             cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('BodyFuck', annotated_frame)
 
         if cv2.waitKey(1) == 27:  # 27 == ESC key
