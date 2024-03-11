@@ -75,7 +75,7 @@ class Visualnterpreter:
             if self.code_pointer_char == None:
                 self.code_pointer_char = 0
                 self.code_pointer_line = 0
-            elif self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
+            elif len(self.code) >= self.code_pointer_line and self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
                 self.code_pointer_char += 1
             elif self.code_pointer_line < len(self.code):
                 self.code_pointer_char = 0
