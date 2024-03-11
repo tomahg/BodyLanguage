@@ -102,7 +102,7 @@ class Visualnterpreter:
             self.cell_pointer += 1           
 
         # Dynamically add more cells as needed
-        if self.cell_pointer == len(self.cells):
+        while self.cell_pointer >= len(self.cells):
             self.cells.append(0)
 
         if command == "<":
