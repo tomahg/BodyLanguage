@@ -91,7 +91,7 @@ In the editor you can do the following
 -   Pause or restart the code execution with a single clap.
 -   Restart the code execution with a single clap, if it's execution has finished.
 -   Exit the interpreter (return to the editor) with a double clap.
--   When the interpreter is paused (with a single clap) point to the right (straight arm) to run the code a single step.
+-   When the interpreter is paused (with a single clap), point to the right (straight arm) to run the code a single step forwards, point to the left (straigh arm) to run the code a single step backwards.
 
 In addition to this, the brave amongst you, can edit the code directly in the interpreter WHILE the code runs! Are you confident in your own coding skills to start executing the program you are halfway finished writing, knowing you will be able to finish your code before the interpreter catches up?
 
@@ -99,7 +99,7 @@ Note: When live coding, the interpreter will halt if your code contains incomple
 
 #### Keyboard commands
 
-For debugging there are some keyboard commands awailable
+For debugging there are some keyboard commands available
 
 -   1: Show/hide the code
 -   2: Show grid lines, to calibrate how far to the right/left you'll need to move, and how low you need to duck
