@@ -67,7 +67,8 @@ Notice the input is not implemented, neither by me nor Nikolaos Hanselmann
 
 -   Double increment: Raises both hands at the same time. Implemented because brainfuck/bodyfuck normally involves a lot of incrementing.
 -   Delete single character: Facepalming with your right hand. Implemented because humans make typos!
--   Single step code intepreter when paused: Pint to the right with a straight right arm.
+-   Single step code intepreter when paused: Point to the right with a straight right arm.
+-	Single step back when paused: Point to the left with a straight right arm to travel back in time!
 
 ### Running the program, and it's two modes
 
