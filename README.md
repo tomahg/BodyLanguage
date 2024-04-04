@@ -108,6 +108,6 @@ For debugging there are some keyboard commands available
 -   4: Clear all code
 -   5: Pause code input
 
-Of course, the use of keyboard command is frowned upon by the bodyfuck community.
+Of course, the use of keyboard commands is frowned upon by the bodyfuck community.
 
 Enjoy!
