@@ -31,14 +31,14 @@ class Visualnterpreter:
                     temp_jumpstack.append((char_number, line_number))
                 if command == ']':
                     if len(temp_jumpstack) == 0:
-                        print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
+                        #print('Syntax error: Can\'t close a loop that hasn\'t started yet!')
                         return False, (line_number, char_number)
                     start = temp_jumpstack.pop()
                     jumpmap[start] = (char_number, line_number)
                     jumpmap[(char_number, line_number)] = start
         if len (temp_jumpstack) > 0:
             (char_number, line_number) = temp_jumpstack.pop()
-            print('Syntax error: Unclosed loop detected!')
+            #print('Syntax error: Unclosed loop detected!')
             return False, (line_number, char_number)
         self.jumpmap = jumpmap
         return True, (0, 0)
@@ -63,7 +63,7 @@ class Visualnterpreter:
     def step(self, single_step = False):
         # No code
         if len(self.code) == 0:
-            print('No code to execute')
+            #print('No code to execute')
             return True, 0, 0, ''
 
         # Step, step, step

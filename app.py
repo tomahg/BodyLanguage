@@ -1,5 +1,6 @@
 from Interpreter import Visualnterpreter
 from DrawUtils import SpeechBubble
+import datetime
 import math
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
@@ -146,12 +147,18 @@ def main():
     interpreter = Visualnterpreter()
     speech_bubble = SpeechBubble()
 
+    start_time = None
+    total_time = ''
+    highscore = []
+    nova_started = False
+    nova_printed = False
+
     # Menu
-    print('1: Toggle code view')
-    print('2: Toggle grid')
-    print('3: Backspace')
-    print('4: Clear code')
-    print('5. Pause')
+    # print('1: Toggle code view')
+    # print('2: Toggle grid')
+    # print('3: Backspace')
+    # print('4: Clear code')
+    # print('5. Pause')
 
     while cap.isOpened():
         ready, flipped_frame = cap.read()
@@ -186,9 +193,10 @@ def main():
                         finished, remember, c, l, o = interpreter.step()
                     if o:
                         code_output += o
+
                     if complete_outout != None:
                         code_output = complete_outout
-                    
+                        
                     if remember:
                         interpreter.history_append(code_output)
 
@@ -199,9 +207,9 @@ def main():
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
                         interpreter_paused = True
-                        print(code_output)
                 interpreter.print_cells(frame) 
                 interpreter.print_outout(frame, code_output)
+
                 if interpreter_error:
                     interpreter.highlight_debug_command(frame, interpreter_error_char, interpreter_error_line, (int(HORIZONTAL_MARGIN / 2)), (0, 0, 255))
                 elif pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
@@ -238,7 +246,6 @@ def main():
                     interpreter_paused = not ok
                     if interpreter_paused:
                         interpreter_error = True
-                        print('Paused')
 
                 if not execute_code:
                     interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
@@ -440,8 +447,6 @@ def main():
                             if clap_count == 1:
                                 if execute_code:
                                     if interpreter_finished_debug_and_print or interpreter_stopped:
-                                        print('Restarting interpreter...')
-                                        print(code)
                                         interpreter.input_code(lines_of_code)
                                         ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
                                         code_output = ''
@@ -456,8 +461,6 @@ def main():
                                             interpreter_finished_debug_and_print = False
                                 else:
                                     if len(code) > 0:
-                                        print('Starting interpreter...')
-                                        print(code)
                                         interpreter.input_code(lines_of_code)
                                         ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
                                         code_output = ''
@@ -470,8 +473,6 @@ def main():
                                             interpreter_paused = False
                                             interpreter_stopped = False
                                             interpreter_finished_debug_and_print = False
-                                    else:
-                                        print('No code to execute!')
                             clap_print1 = 0
                             clap_print2 = 0
                             clap_stage = ''
@@ -487,7 +488,6 @@ def main():
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
                                 clap_count += 1
-                                print('Clap', clap_count)
                     if clap_count >= 2:
                         if clap_print2 == 0:
                             clap_display_for_frames = 10
@@ -495,12 +495,11 @@ def main():
                             # If interpreter is running: stop it
                             # Otherwise clear code buffer
                             if execute_code:
-                                print('Stopping interpreter')
                                 execute_code = False
                                 interpreter_paused = False
                             else:
-                                print('Clearing code')
-                                code = ''                        
+                                code = ''
+                                code_output = ''                     
                     elif clap_count == 1:
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
@@ -508,16 +507,37 @@ def main():
                             # Pause / resume debugger immediately, without waiting for potential second clap
                             if execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
                                 if interpreter_paused:
-                                    print('Resuming interpreter...') 
                                     interpreter_paused = False
                                 else:
-                                    print('Pausing interpreter...') 
                                     interpreter_paused = True
                     elif clap_stage == 'wide' and clap_closing_timeframe > 0:
                         clap_closing_timeframe -= 1
 
+            if nova_started or nova_printed:
+                if nova_printed:
+                    time = total_time
+                else:
+                    time = datetime.datetime.now() - start_time
+
+                score_color = (0,255,0)
+
+                if highscore:
+                    hs_name, hs_time = highscore[0]
+                    formatted_hs_time = f"{hs_time.seconds // 60}:{hs_time.seconds % 60:02}"
+                    text = f"{hs_name}: {formatted_hs_time}"
+                    offset = interpreter.get_text_width(text, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
+                    cv2.putText(frame, text, (8 * 79 - offset, 422), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 2)
+                    if time > hs_time:
+                        score_color = (0,0,255)
+
+                formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
+                offset = interpreter.get_text_width(formatted_time, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
+                cv2.putText(frame, formatted_time, (8 * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, score_color, 2)
+
+
+
             cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
-            cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            #cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('BodyFuck', annotated_frame)
 
         if cv2.waitKey(1) == 27:  # 27 == ESC key
@@ -537,12 +557,31 @@ def main():
         elif cv2.waitKey(1) == ord('5') and last_keypress != '5': #Pause
             last_keypress = '5'
             pause = not pause
-            if pause:
-                print('Paused')
-            else:
-                print('Resumed')
         else:
             last_keypress = '0'
+
+        if len(code) == 0:
+            nova_started = False
+            nova_printed = False
+        elif nova_started == False:
+            nova_started = True
+            nova_printed = False
+            start_time = datetime.datetime.now()
+
+        if code_output == 'NOVA' and nova_printed == False: 
+            total_time = datetime.datetime.now() - start_time
+            nova_printed = True    
+            name = input('Navn: ')
+            if name:
+                highscore.append((name, total_time))
+            highscore = sorted(highscore, key=lambda x: x[1])
+            max_length = max(len(s) for (s,_) in highscore)
+            print()
+            with open('highscore.txt', 'w') as file:
+                for name, time in highscore:
+                    formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
+                    print(f"{name.ljust(max_length)} {formatted_time}")
+                    file.write(f"{name.ljust(max_length)} {formatted_time}\n")     
 
     cap.release()
     cv2.destroyAllWindows()
