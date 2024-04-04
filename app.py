@@ -109,7 +109,7 @@ def main():
     HORIZONTAL_MARGIN = 10
 
     COMMAND_DELAY = 0
-    THRESHOLD_DUCK_Y = 430 # Alfa: 200, Indoor: 430, Hareid: 240
+    THRESHOLD_DUCK_Y = 200 # Alfa: 200, Office desk: 428
     THRESHOLD_EDGE = 240
     THRESHOLD_LEFT_X = THRESHOLD_EDGE
     THRESHOLD_RIGHT_X = 640 - THRESHOLD_EDGE
@@ -482,7 +482,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 if landmarks[PoseLandmark.LEFT_SHOULDER][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_SHOULDER][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     clap_stage = 'wide' 
-                                    clap_closing_timeframe = 15    
+                                    clap_closing_timeframe = 25    
                         if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
                             if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                 clap_stage = 'clap'
