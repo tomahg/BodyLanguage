@@ -1,11 +1,11 @@
 from Interpreter import Visualnterpreter
 from DrawUtils import SpeechBubble
+import cv2
 import datetime
 import math
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
 import numpy as np
-import cv2
 
 class PoseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
@@ -570,18 +570,19 @@ def main():
 
         if code_output == 'NOVA' and nova_printed == False: 
             total_time = datetime.datetime.now() - start_time
-            nova_printed = True    
+            nova_printed = True   
             name = input('Navn: ')
             if name:
                 highscore.append((name, total_time))
-            highscore = sorted(highscore, key=lambda x: x[1])
-            max_length = max(len(s) for (s,_) in highscore)
-            print()
-            with open('highscore.txt', 'w') as file:
-                for name, time in highscore:
-                    formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
-                    print(f"{name.ljust(max_length)} {formatted_time}")
-                    file.write(f"{name.ljust(max_length)} {formatted_time}\n")     
+            if highscore:
+                highscore = sorted(highscore, key=lambda x: x[1])
+                max_length = max(len(s) for (s,_) in highscore)
+                print()
+                with open('highscore.txt', 'w') as file:
+                    for name, time in highscore:
+                        formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
+                        print(f"{name.ljust(max_length)} {formatted_time}")
+                        file.write(f"{name.ljust(max_length)} {formatted_time}\n")     
 
     cap.release()
     cv2.destroyAllWindows()
