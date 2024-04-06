@@ -5,6 +5,7 @@ import datetime
 import math
 import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
+import msvcrt
 import numpy as np
 
 class PoseDetector() :    
@@ -98,6 +99,10 @@ def draw_white_apha_box(img, x, y, h, w):
 
     # Put the image back to its position
     img[y:y+h, x:x+w] = res
+
+def flush_input():
+    while msvcrt.kbhit():
+        msvcrt.getch()
 
 def main():
     detector = PoseDetector()
@@ -570,7 +575,8 @@ def main():
 
         if code_output == 'NOVA' and nova_printed == False: 
             total_time = datetime.datetime.now() - start_time
-            nova_printed = True   
+            nova_printed = True
+            flush_input() 
             name = input('Navn: ')
             if name:
                 highscore.append((name, total_time))
