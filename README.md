@@ -45,7 +45,7 @@ Using the [MediaPipe](https://developers.google.com/mediapipe) library from Goog
 I use [Open CV](https://opencv.org/) for streaming the video from my webcam, and also to draw on the video stream.
 
 -   For each recognized move, the move is drawn on screen.
--   The complerte brainfuck code is drawn on screen.
+-   The complete brainfuck code is drawn on screen.
 -   When running/debugging the code, the current brainfuck character is highlighted.
 -   When running/debugging the code, I draw the eight first cells of the datastructure at the bottom of the screen.
 
