@@ -1,5 +1,7 @@
 # Gesture controlled brainfuck interpreter
 
+[![BodyFuck](https://img.youtube.com/vi/aZ6Ey_xc33A/0.jpg)](https://www.youtube.com/watch?v=aZ6Ey_xc33A)
+
 #### Introduction
 
 This interpreter let the user input, and debug, brainfuck code in a visual manner using only body gestures – keyboard are completely optional.
