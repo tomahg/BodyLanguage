@@ -125,7 +125,6 @@ def main():
 
     last_command = ''
     same_command_count = 0
-    last_keypress = ''
     code = ''
     lines_of_code = []
 
@@ -545,25 +544,22 @@ def main():
             #cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('BodyFuck', annotated_frame)
 
-        if cv2.waitKey(1) == 27:  # 27 == ESC key
+        key = cv2.waitKeyEx(1)
+
+        if key == 27:  # 27 == ESC key
             break
-        elif cv2.waitKey(1) == ord('1') and last_keypress != '1': #Toggle code view
-            last_keypress = '1'
-            show_code_lines = not show_code_lines
-        elif cv2.waitKey(1) == ord('2') and last_keypress != '2': #Toggle grid
-            last_keypress = '2'
-            show_grid_lines = not show_grid_lines
-        elif cv2.waitKey(1) == ord('3') and last_keypress != '3': #Backspace
-            last_keypress = '3'
-            code = code[:-1]
-        elif cv2.waitKey(1) == ord('4') and last_keypress != '4': #Clear code
-            last_keypress = '4'
-            code = ''
-        elif cv2.waitKey(1) == ord('5') and last_keypress != '5': #Pause
-            last_keypress = '5'
-            pause = not pause
-        else:
-            last_keypress = '0'
+
+        if key != -1:
+            if key == ord('c'): #Toggle code view
+                show_code_lines = not show_code_lines
+            elif key == ord('g'): #Toggle grid
+                show_grid_lines = not show_grid_lines
+            elif key == 8: #Backspace
+                code = code[:-1]
+            elif key == 3014656: #Clear code
+                code = ''
+            elif key == ord('p'): #Pause
+                pause = not pause
 
         if len(code) == 0:
             nova_started = False
