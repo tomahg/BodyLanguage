@@ -7,6 +7,7 @@ import mediapipe as mp
 from mediapipe.python.solutions.pose import PoseLandmark
 import msvcrt
 import numpy as np
+import requests
 
 FONT_SIZE = 10
 FONT_WEIGHT = 10
@@ -154,7 +155,6 @@ def main():
 
     start_time = None
     total_time = ''
-    highscore = []
     nova_started = False
     nova_printed = False
 
@@ -530,16 +530,6 @@ def main():
                     time = datetime.datetime.now() - start_time
 
                 score_color = (0,255,0)
-
-                if highscore:
-                    hs_name, hs_time = highscore[0]
-                    formatted_hs_time = f"{hs_time.seconds // 60}:{hs_time.seconds % 60:02}"
-                    text = f"{hs_name}: {formatted_hs_time}"
-                    offset = interpreter.get_text_width(text, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
-                    cv2.putText(frame, text, (8 * 79 - offset, 422), cv2.FONT_HERSHEY_PLAIN, 2, (0,255,0), 2)
-                    if time > hs_time:
-                        score_color = (0,0,255)
-
                 formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
                 offset = interpreter.get_text_width(formatted_time, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
                 cv2.putText(frame, formatted_time, (8 * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, score_color, 2)
@@ -578,20 +568,19 @@ def main():
 
         if code_output == 'NOVA' and nova_printed == False: 
             total_time = datetime.datetime.now() - start_time
+            time_spent_seconds = int(total_time.total_seconds())
+
             nova_printed = True
-            flush_input() 
-            name = input('Navn: ')
-            if name:
-                highscore.append((name, total_time))
-            if highscore:
-                highscore = sorted(highscore, key=lambda x: x[1])
-                max_length = max(len(s) for (s,_) in highscore)
-                print()
-                with open('highscore.txt', 'w') as file:
-                    for name, time in highscore:
-                        formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
-                        print(f"{name.ljust(max_length)} {formatted_time}")
-                        file.write(f"{name.ljust(max_length)} {formatted_time}\n")     
+            try:
+                resp = requests.post(
+                    "http://127.0.0.1:3000/submit",
+                    json={"time": time_spent_seconds},
+                    timeout=3.0
+                )
+                resp.raise_for_status()
+                print("Posted score, server replied:", resp.json())
+            except Exception as e:
+                print("Error posting score:", e)   
 
     cap.release()
     cv2.destroyAllWindows()

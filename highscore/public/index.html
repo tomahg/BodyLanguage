@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8" />
+  <title>Topp 10</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --pad: 16px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: var(--pad); }
+    h1 { text-align: center; margin: 0 0 12px 0; }
+    h3 { margin: 24px 0 8px; font-weight: 600; font-size: 1.05rem; }
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f6f6f6; text-align: left; }
+    th.right, td.right { text-align: right; }
+	th.center, td.center { text-align: center; }
+    .pending-row input { flex: 1 1 220px; padding: 6px 8px; }
+    .pending-row button { padding: 6px 10px; cursor: pointer; }
+	.pending-row { display: flex; justify-content: center; margin: 10px 0; }
+	.pending-col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 360px); }
+	.pending-line { display: flex; }
+	.pending-line.center { justify-content: center; }
+	.pending-line.buttons { justify-content: flex-end; gap: 8px; }
+	.pending-input { width: 100%; padding: 6px 8px; }
+
+    @media (max-width: 480px) {
+      th, td { padding: 6px; font-size: 0.95rem; }
+      .pending-row input { flex-basis: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Topp 10</h1>
+
+  <div class="table-wrap">
+    <table id="scores">
+		<thead>
+		  <tr>
+			<th class="center" style="width: 90px;">Plassering</th>
+			<th>Navn</th>
+			<th class="right" style="width: 120px;">Tid</th>
+			<th style="width: 120px;">Tidspunkt</th>
+		  </tr>
+		</thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Only render "Nye tider" if there are pending scores (done in script.js) -->
+  <div id="pending-section"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
