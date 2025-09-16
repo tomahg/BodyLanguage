@@ -6,6 +6,19 @@ from mediapipe.python.solutions.pose import PoseLandmark
 import numpy as np
 import cv2
 
+FONT_SIZE = 10
+FONT_WEIGHT = 10
+MIN_CHARS_PER_LINE = 15
+MAX_LINES_OF_CODE = 2
+HORIZONTAL_MARGIN = 10
+
+COMMAND_DELAY = 0
+
+# Threshold can be updated by clicking the video stream
+# Use the g command to view and test the updated thresholds
+THRESHOLD_DUCK_Y = 200 # Alfa: 200, Office desk: 430
+THRESHOLD_EDGE = 240
+
 class PoseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
                  enable_segmentation=False, smooth_segmentation=True,
@@ -102,18 +115,6 @@ def main():
     detector = PoseDetector()
     cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-    FONT_SIZE = 10
-    FONT_WEIGHT = 10
-    MIN_CHARS_PER_LINE = 15
-    MAX_LINES_OF_CODE = 2
-    HORIZONTAL_MARGIN = 10
-
-    COMMAND_DELAY = 0
-    THRESHOLD_DUCK_Y = 200 # Alfa: 200, Office desk: 428
-    THRESHOLD_EDGE = 240
-    THRESHOLD_LEFT_X = THRESHOLD_EDGE
-    THRESHOLD_RIGHT_X = 640 - THRESHOLD_EDGE
-
     show_code_lines = True
     show_grid_lines = False
 
@@ -161,6 +162,9 @@ def main():
             frame = cv2.flip(flipped_frame, 1)
             annotated_frame = detector.process(frame)
             landmarks = detector.find_pixel_positions(frame)
+
+            THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
+            THRESHOLD_RIGHT_X = THRESHOLD_EDGE
 
             if show_grid_lines: 
                 cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
@@ -518,6 +522,7 @@ def main():
                         clap_closing_timeframe -= 1
 
             cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback('BodyFuck', on_mouse)
             cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('BodyFuck', annotated_frame)
 
@@ -540,6 +545,16 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
+
+def on_mouse(event, x, y, flags, param):
+    global THRESHOLD_EDGE, THRESHOLD_DUCK_Y
+    if event == cv2.EVENT_LBUTTONDOWN:
+        if x > (640/2):
+            THRESHOLD_EDGE = x
+        else:
+            THRESHOLD_EDGE = 640 - x
+        THRESHOLD_DUCK_Y = y
+        return
     
 if __name__ == "__main__":
     main()
