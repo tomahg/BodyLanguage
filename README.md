@@ -104,11 +104,11 @@ Note: When live coding, the interpreter will halt if your code contains incomple
 
 For debugging there are some keyboard commands available
 
--   1: Show/hide the code
--   2: Show grid lines, to calibrate how far to the right/left you'll need to move, and how low you need to duck
--   3: Delete single character
--   4: Clear all code
--   5: Pause code input
+-   c: Show/hide the code
+-   g: Show grid lines, to calibrate how far to the right/left you'll need to move, and how low you need to duck
+-   p: Pause code input
+-   backspace: Delete single character
+-   delete: Clear all code
 
 Of course, the use of keyboard commands is frowned upon by the bodyfuck community.
 
