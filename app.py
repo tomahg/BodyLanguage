@@ -158,11 +158,13 @@ def main():
     nova_printed = False
 
     # Menu
-    # print('1: Toggle code view')
-    # print('2: Toggle grid')
-    # print('3: Backspace')
-    # print('4: Clear code')
-    # print('5. Pause')
+    print(' ')
+    print('        c: Toggle code view')
+    print('        g: Toggle grid')
+    print('        p: Pause')
+    print('backspace: Delete single character')
+    print('   delete: Clear code')
+    print(' ')
 
     while cap.isOpened():
         ready, flipped_frame = cap.read()
