@@ -7,3 +7,13 @@ Start highscore server:
 ```
 node server.js
 ```
+
+## Testing from Postman
+Verb: POST \
+Url: http://127.0.0.1:3000/submit \
+Body raw: 
+``` json
+{
+  "time": 60
+}
+```
