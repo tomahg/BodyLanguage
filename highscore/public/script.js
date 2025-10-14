@@ -175,6 +175,8 @@ function renderPending(pending) {
 
     row.appendChild(col);
     container.appendChild(row);
+
+    inputName.focus();
   });
 }
 
