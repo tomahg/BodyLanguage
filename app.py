@@ -120,7 +120,7 @@ def flush_input():
 
 def main():
     detector = PoseDetector()
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
     show_code_lines = True
     show_grid_lines = False
@@ -153,7 +153,8 @@ def main():
     interpreter = Visualnterpreter()
     speech_bubble = SpeechBubble()
 
-    start_time = None
+    nova_start_time = None
+    nova_end_time = None
     total_time = ''
     nova_started = False
     nova_printed = False
@@ -217,8 +218,14 @@ def main():
                     if finished and not interpreter_finished_debug_and_print:
                         interpreter_finished_debug_and_print = True
                         interpreter_paused = True
-                interpreter.print_cells(frame) 
-                interpreter.print_outout(frame, code_output)
+                interpreter.print_cells(frame)
+                if code_output == 'NOVA':
+                    interpreter.print_outout(frame, code_output, (0,255,0))
+                else:
+                    if interpreter_finished_debug_and_print:                        
+                        interpreter.print_outout(frame, code_output, (0,0,255))
+                    else:
+                        interpreter.print_outout(frame, code_output, (255,255,255))
 
                 if interpreter_error:
                     interpreter.highlight_debug_command(frame, interpreter_error_char, interpreter_error_line, (int(HORIZONTAL_MARGIN / 2)), (0, 0, 255))
@@ -455,6 +462,7 @@ def main():
                                 cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                         else:
                             if clap_count == 1:
+                                nova_end_time = datetime.datetime.now()
                                 if execute_code:
                                     if interpreter_finished_debug_and_print or interpreter_stopped:
                                         interpreter.input_code(lines_of_code)
@@ -509,7 +517,8 @@ def main():
                                 interpreter_paused = False
                             else:
                                 code = ''
-                                code_output = ''                     
+                                code_output = ''
+                                nova_end_time = None                 
                     elif clap_count == 1:
                         if clap_print1 == 0:
                             clap_display_for_frames = 10
@@ -523,11 +532,17 @@ def main():
                     elif clap_stage == 'wide' and clap_closing_timeframe > 0:
                         clap_closing_timeframe -= 1
 
+            if last_command not in ['default', '']:
+                nova_end_time = None
+
             if nova_started or nova_printed:
                 if nova_printed:
                     time = total_time
                 else:
-                    time = datetime.datetime.now() - start_time
+                    if nova_end_time == None:
+                        time = datetime.datetime.now() - nova_start_time
+                    else:
+                        time = nova_end_time - nova_start_time
 
                 score_color = (0,255,0)
                 formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
@@ -538,7 +553,7 @@ def main():
 
             cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
             cv2.setMouseCallback('BodyFuck', on_mouse)
-            #cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('BodyFuck', annotated_frame)
 
         key = cv2.waitKeyEx(1)
@@ -553,8 +568,16 @@ def main():
                 show_grid_lines = not show_grid_lines
             elif key == 8: #Backspace
                 code = code[:-1]
+                if code == '':
+                    nova_end_time = None
             elif key == 3014656: #Clear code
                 code = ''
+                code_output = ''
+                execute_code = False
+                interpreter_paused = False
+                nova_end_time = None
+                # Make sure cells at the bottom of the screen is hidden
+                ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
             elif key == ord('p'): #Pause
                 pause = not pause
 
@@ -564,10 +587,14 @@ def main():
         elif nova_started == False:
             nova_started = True
             nova_printed = False
-            start_time = datetime.datetime.now()
+            nova_start_time = datetime.datetime.now()
+            nova_end_time = None
 
         if code_output == 'NOVA' and nova_printed == False: 
-            total_time = datetime.datetime.now() - start_time
+            if nova_end_time == None:
+                total_time = datetime.datetime.now() - nova_start_time
+            else:
+                total_time = nova_end_time - nova_start_time
             time_spent_seconds = int(total_time.total_seconds())
 
             nova_printed = True

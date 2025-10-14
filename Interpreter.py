@@ -64,7 +64,7 @@ class Visualnterpreter:
         # No code
         if len(self.code) == 0:
             #print('No code to execute')
-            return True, 0, 0, ''
+            return True, False, 0, 0, ''
 
         # Step, step, step
         if not single_step and self.in_loop_level == 0 and self.debug_slowdown_count % self.debug_slowdown_factor != 0:
@@ -243,7 +243,7 @@ class Visualnterpreter:
         cv2.line(img, (xp, yp), (xp - 20, yp - 15), (0,0,255), 3)
         cv2.line(img, (xp, yp), (xp + 20, yp - 15), (0,0,255), 3)
 
-    def print_outout(self, img, output):
+    def print_outout(self, img, output, color):
         if len(output) > 0:
             font_size = 5
             font_thickness = 3
@@ -264,4 +264,4 @@ class Visualnterpreter:
                 self.draw_black_alpha_box(img, 0, 320, 70, img.shape[1])      
                 # Offset to keep text centered, while getting smaller
                 offset = int((47 - height) / 2)    
-                cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380 - offset), cv2.FONT_HERSHEY_PLAIN, font_size, (255,255,255), font_thickness)
+                cv2.putText(img, output, (int((img.shape[1] - width) / 2) , 380 - offset), cv2.FONT_HERSHEY_PLAIN, font_size, color, font_thickness)
