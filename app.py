@@ -562,7 +562,6 @@ def main():
             break
 
         if key != -1:
-            print(key)
             if key == ord('c'): #Toggle code view
                 show_code_lines = not show_code_lines
             elif key == ord('g'): #Toggle grid (g key or vk_media_prev_track(using ahk))
