@@ -158,6 +158,7 @@ def main():
     total_time = ''
     nova_started = False
     nova_printed = False
+    fullscreen = False
 
     # Menu
     print(' ')
@@ -166,6 +167,7 @@ def main():
     print('        p: Pause')
     print('backspace: Delete single character')
     print('   delete: Clear code')
+    print('      F11: Toggle fullscreen')
     print(' ')
 
     while cap.isOpened():
@@ -551,10 +553,9 @@ def main():
 
 
 
-            cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
-            cv2.setMouseCallback('BodyFuck', on_mouse)
-            cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.imshow('BodyFuck', annotated_frame)
+            cv2.namedWindow('Nova', cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback('Nova', on_mouse)
+            cv2.imshow('Nova', annotated_frame)
 
         key = cv2.waitKeyEx(1)
 
@@ -582,6 +583,12 @@ def main():
                 ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
             elif key == ord('p'): #Pause
                 pause = not pause
+            elif key == 7995392: #F11
+                fullscreen = not fullscreen
+                if fullscreen:
+                    cv2.setWindowProperty("Nova", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                else:
+                    cv2.setWindowProperty("Nova", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
         if len(code) == 0:
             nova_started = False
