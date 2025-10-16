@@ -2,15 +2,22 @@ const LOCALE = "nb-NO";
 const REFRESH_MS = 2000;
 
 let refreshTimer = null;
-let forceRenderPendingOnce = false; // tving én re-render av "Nye tider" etter submit
+let forceRenderPendingOnce = false;
 
 function startPolling() {
-  if (refreshTimer) clearInterval(refreshTimer);
+  // idempotent: don't reset an already-running timer
+  if (refreshTimer) return;
   refreshTimer = setInterval(refresh, REFRESH_MS);
 }
 
+function pausePolling() {
+  if (refreshTimer) {
+    clearInterval(refreshTimer);
+    refreshTimer = null;
+  }
+}
+
 async function refresh() {
-  // Ikke re-render "Nye tider" mens noen skriver i et pending-input
   const active = document.activeElement;
   const typing =
     !forceRenderPendingOnce &&
@@ -24,12 +31,24 @@ async function refresh() {
 
   renderHighscores(state.highscores);
 
-  if (!typing) {
+  // Finn ut om det finnes pending-oppføringer på skjermen
+  const hasPendingVisible = document.querySelector("#pending-section .pending-input");
+
+  // Pause polling mens vi skriver / har pending-felter oppe,
+  // ellers sørg for at polling kjører.
+  if (typing || hasPendingVisible) {
+    pausePolling();
+  } else {
+    startPolling();
+  }
+
+  // Ikke oppdater pending mens man skriver eller det vises pending-felter
+  if (!typing && !hasPendingVisible) {
     renderPending(state.pending);
-    // tvungen re-render brukt opp
     forceRenderPendingOnce = false;
   }
 }
+
 
 function renderHighscores(list) {
   const tbody = document.querySelector("#scores tbody");
@@ -69,11 +88,6 @@ function renderPending(pending) {
     return;
   }
 
-  // Tittel "Nye tider"
-  const h = document.createElement("h3");
-  h.textContent = "Nye tider";
-  section.appendChild(h);
-
   const container = document.createElement("div");
   section.appendChild(container);
 
@@ -86,23 +100,23 @@ function renderPending(pending) {
     const col = document.createElement("div");
     col.className = "pending-col";
 
-    // Linje 1: Tid (sentrert)
+    // Linje 1: Tid
     const line1 = document.createElement("div");
     line1.className = "pending-line center";
     const label = document.createElement("span");
     label.textContent = `Tid: ${formatSecondsMMSS(p.time)}`;
     line1.appendChild(label);
 
-    // Linje 2: Navn (sentrert input)
+    // Linje 2: Navn
     const line2 = document.createElement("div");
     line2.className = "pending-line";
     const inputName = document.createElement("input");
     inputName.className = "pending-input";
-    inputName.placeholder = "Skriv navn";
+    inputName.placeholder = "Navn";
     inputName.required = true;
     inputName.dataset.pendingId = p.id;
 
-    // Linje 3: Telefon (sentrert input)
+    // Linje 3: Telefon
     const line3 = document.createElement("div");
     line3.className = "pending-line";
     const inputPhone = document.createElement("input");
@@ -112,9 +126,29 @@ function renderPending(pending) {
     inputPhone.type = "tel";
     inputPhone.dataset.pendingId = p.id;
 
-    // Linje 4: Knapper (høyrejustert til input-bredden)
+    // Linje 4: Samtykke (checkbox, default unchecked)
     const line4 = document.createElement("div");
-    line4.className = "pending-line buttons";
+    line4.className = "pending-line";
+    const inputConsent = document.createElement("input");
+    inputConsent.type = "checkbox";
+    inputConsent.name = "consent";
+    inputConsent.id = `consent-${p.id}`;
+    inputConsent.checked = false; // default: ikke krysset av
+
+    const consentLabel = document.createElement("label");
+    consentLabel.setAttribute("for", inputConsent.id);
+    consentLabel.textContent =
+      "Ved innsending samtykker jeg til at NOVA kan kontakte meg i forbindelse med konkurransen, relevante stillinger og nyheter i fremtiden.";
+
+    // litt luft mellom boks og tekst
+    inputConsent.style.marginRight = "0.5rem";
+
+    line4.appendChild(inputConsent);
+    line4.appendChild(consentLabel);
+
+    // Linje 5: Knapper
+    const line5 = document.createElement("div");
+    line5.className = "pending-line buttons";
     const btnSave = document.createElement("button");
     btnSave.textContent = "✔";
     btnSave.title = "Lagre navn + telefon";
@@ -128,7 +162,7 @@ function renderPending(pending) {
         const name = inputName.value.trim();
         const phone = inputPhone.value.trim();
         if (!name || !phone) return;
-        await register(p.id, name, phone);
+        await register(p.id, name, phone, inputConsent.checked);
         afterSubmitCleanup();
       }
     });
@@ -139,7 +173,7 @@ function renderPending(pending) {
         const name = inputName.value.trim();
         const phone = inputPhone.value.trim();
         if (!name || !phone) return;
-        await register(p.id, name, phone);
+        await register(p.id, name, phone, inputConsent.checked);
         afterSubmitCleanup();
       }
     });
@@ -149,7 +183,7 @@ function renderPending(pending) {
       const name = inputName.value.trim();
       const phone = inputPhone.value.trim();
       if (!name || !phone) return;
-      await register(p.id, name, phone);
+      await register(p.id, name, phone, inputConsent.checked);
       afterSubmitCleanup();
     };
 
@@ -165,13 +199,14 @@ function renderPending(pending) {
 
     line2.appendChild(inputName);
     line3.appendChild(inputPhone);
-    line4.appendChild(btnSave);
-    line4.appendChild(btnX);
+    line5.appendChild(btnSave);
+    line5.appendChild(btnX);
 
     col.appendChild(line1);
     col.appendChild(line2);
     col.appendChild(line3);
     col.appendChild(line4);
+    col.appendChild(line5);
 
     row.appendChild(col);
     container.appendChild(row);
@@ -180,11 +215,11 @@ function renderPending(pending) {
   });
 }
 
-async function register(id, name, phone) {
+async function register(id, name, phone, consent) {
   await fetch("/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, name, phone }),
+    body: JSON.stringify({ id, name, phone, consent }),
   });
 }
 
@@ -193,9 +228,14 @@ function afterSubmitCleanup() {
   if (document.activeElement && document.activeElement.blur) {
     document.activeElement.blur();
   }
+  // Skjul pending-section umiddelbart
+  const section = document.getElementById("pending-section");
+  if (section) section.innerHTML = "";
+
   // Tving én pending-render og oppdater umiddelbart
   forceRenderPendingOnce = true;
-  refresh();
+  refresh();          // gjør en umiddelbar sjekk/oppdatering
+  startPolling();     // i tilfelle inputs nå er borte – sørg for at polling er i gang
 }
 
 // --- Hjelpere ---

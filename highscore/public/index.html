@@ -11,18 +11,27 @@
     h3 { margin: 24px 0 8px; font-weight: 600; font-size: 1.05rem; }
     .table-wrap { width: 100%; overflow-x: auto; padding: 0 5rem; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { border: 1px solid #ddd; padding: 8px; }
+    th, td { border: 1px solid #ddd; padding: 6px; }
     th { background: #f6f6f6; text-align: left; }
     th.right, td.right { text-align: right; }
 	th.center, td.center { text-align: center; }
     .pending-row input { flex: 1 1 220px; padding: 6px 8px; }
     .pending-row button { padding: 6px 10px; cursor: pointer; }
+  #pending-section { margin-top: 32px; }
 	.pending-row { display: flex; justify-content: center; margin: 10px 0; }
 	.pending-col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 360px); }
 	.pending-line { display: flex; }
 	.pending-line.center { justify-content: center; }
 	.pending-line.buttons { justify-content: flex-end; gap: 8px; }
 	.pending-input { width: 100%; padding: 6px 8px; }
+  .pending-line input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin-right: -10px !important;
+    margin-left: -17px;
+    cursor: pointer;
+  }
 
     @media (max-width: 480px) {
       th, td { padding: 6px; font-size: 0.95rem; }

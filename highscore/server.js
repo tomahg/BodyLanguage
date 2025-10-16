@@ -35,7 +35,7 @@ try {
   persist();
 }
 
-keepTop10();
+keepSorted();
 
 // -------------------- App setup --------------------
 const app = express();
@@ -77,9 +77,8 @@ function persist() {
   }
 }
 
-function keepTop10() {
+function keepSorted() {
   state.highscores.sort((a, b) => a.time - b.time);
-  state.highscores = state.highscores.slice(0, 10);
 }
 
 function newId() {
@@ -107,13 +106,17 @@ app.post("/submit", (req, res) => {
 
 // GET /state
 app.get("/state", (req, res) => {
-  keepTop10();
+  const top10 = {
+    ...state,
+    highscores: state.highscores.slice(0, 10),
+  };
+
   res.json(state);
 });
 
-// POST /register  { id, name, phone }
+// POST /register  { id, name, phone, consent }
 app.post("/register", (req, res) => {
-  const { id, name, phone } = req.body || {};
+  const { id, name, phone, consent } = req.body || {};
   const idx = state.pending.findIndex((p) => p.id === String(id));
 
   if (idx === -1) {
@@ -125,18 +128,23 @@ app.post("/register", (req, res) => {
     return res.status(400).json({ error: "Name and phone are required" });
   }
 
+  // Normalize consent to a strict boolean (stores true/false in JSON)
+  const consentBool = Boolean(consent);
+
   state.highscores.push({
     name: String(name).trim(),
     phone: String(phone).trim(), // stored but not shown in table
     time: state.pending[idx].time, // integer seconds
     date: new Date().toISOString(),
+    consent: consentBool,
   });
 
   state.pending.splice(idx, 1);
-  keepTop10();
+  keepSorted();
   persist();
   res.json({ ok: true });
 });
+
 
 // POST /dismiss  { id }
 app.post("/dismiss", (req, res) => {
