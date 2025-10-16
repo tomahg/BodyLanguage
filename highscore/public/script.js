@@ -72,7 +72,7 @@ function renderHighscores(list) {
       <td class="center">${i + 1}.</td>
       <td>${escapeHtml(s.name)}</td>
       <td class="right">${formatSecondsMMSS(s.time)}</td>
-      <td>${klokkeslett}</td>
+      <td class="center">${klokkeslett}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -96,7 +96,7 @@ function renderPending(pending) {
     const row = document.createElement("div");
     row.className = "pending-row";
 
-    // Indre kolonne (fast bredde, 4 linjer)
+    // Indre kolonne (fast bredde, 3 linjer)
     const col = document.createElement("div");
     col.className = "pending-col";
 
@@ -107,18 +107,19 @@ function renderPending(pending) {
     label.textContent = `Tid: ${formatSecondsMMSS(p.time)}`;
     line1.appendChild(label);
 
-    // Linje 2: Navn
+    // Linje 2: Navn og Telefon side by side + knapper til høyre
     const line2 = document.createElement("div");
-    line2.className = "pending-line";
+    line2.className = "pending-line inputs";
+    line2.style.display = "flex";
+    line2.style.gap = "8px";
+    line2.style.alignItems = "center";
+
     const inputName = document.createElement("input");
     inputName.className = "pending-input";
     inputName.placeholder = "Navn";
     inputName.required = true;
     inputName.dataset.pendingId = p.id;
 
-    // Linje 3: Telefon
-    const line3 = document.createElement("div");
-    line3.className = "pending-line";
     const inputPhone = document.createElement("input");
     inputPhone.className = "pending-input";
     inputPhone.placeholder = "Telefonnummer";
@@ -126,9 +127,29 @@ function renderPending(pending) {
     inputPhone.type = "tel";
     inputPhone.dataset.pendingId = p.id;
 
-    // Linje 4: Samtykke (checkbox, default unchecked)
-    const line4 = document.createElement("div");
-    line4.className = "pending-line";
+    // Knapper
+    const btnSave = document.createElement("button");
+    btnSave.textContent = "✔";
+    btnSave.title = "Lagre navn + telefon";
+    const btnX = document.createElement("button");
+    btnX.textContent = "✖";
+    btnX.title = "Registrer ikke denne tiden";
+
+    // Knappecontainer for å gruppere knappene
+    const btnGroup = document.createElement("div");
+    btnGroup.className = "pending-line buttons";
+    btnGroup.style.display = "flex";
+    btnGroup.style.gap = "8px";
+    btnGroup.appendChild(btnSave);
+    btnGroup.appendChild(btnX);
+
+    line2.appendChild(inputName);
+    line2.appendChild(inputPhone);
+    line2.appendChild(btnGroup);
+
+    // Linje 3: Samtykke (checkbox, default unchecked) under inputs, spanning both
+    const line3 = document.createElement("div");
+    line3.className = "";
     const inputConsent = document.createElement("input");
     inputConsent.type = "checkbox";
     inputConsent.name = "consent";
@@ -143,18 +164,8 @@ function renderPending(pending) {
     // litt luft mellom boks og tekst
     inputConsent.style.marginRight = "0.5rem";
 
-    line4.appendChild(inputConsent);
-    line4.appendChild(consentLabel);
-
-    // Linje 5: Knapper
-    const line5 = document.createElement("div");
-    line5.className = "pending-line buttons";
-    const btnSave = document.createElement("button");
-    btnSave.textContent = "✔";
-    btnSave.title = "Lagre navn + telefon";
-    const btnX = document.createElement("button");
-    btnX.textContent = "✖";
-    btnX.title = "Registrer ikke denne tiden";
+    line3.appendChild(inputConsent);
+    line3.appendChild(consentLabel);
 
     // Enter på navn
     inputName.addEventListener("keydown", async (e) => {
@@ -197,16 +208,9 @@ function renderPending(pending) {
       afterSubmitCleanup();
     };
 
-    line2.appendChild(inputName);
-    line3.appendChild(inputPhone);
-    line5.appendChild(btnSave);
-    line5.appendChild(btnX);
-
     col.appendChild(line1);
-    col.appendChild(line2);
-    col.appendChild(line3);
-    col.appendChild(line4);
-    col.appendChild(line5);
+    col.appendChild(line2); // inputs + buttons side by side
+    col.appendChild(line3); // checkbox below, spanning both
 
     row.appendChild(col);
     container.appendChild(row);

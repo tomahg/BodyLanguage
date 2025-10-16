@@ -7,7 +7,7 @@
   <style>
     :root { --pad: 16px; }
     body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: var(--pad); }
-    h1 { text-align: center; margin: 24px 0 24px 0; }
+    h1 { text-align: center; }
     h3 { margin: 24px 0 8px; font-weight: 600; font-size: 1.05rem; }
     .table-wrap { width: 100%; overflow-x: auto; padding: 0 5rem; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -17,21 +17,15 @@
 	th.center, td.center { text-align: center; }
     .pending-row input { flex: 1 1 220px; padding: 6px 8px; }
     .pending-row button { padding: 6px 10px; cursor: pointer; }
-  #pending-section { margin-top: 32px; }
+  #pending-section { margin-top: 22px; }
 	.pending-row { display: flex; justify-content: center; margin: 10px 0; }
-	.pending-col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 360px); }
+	.pending-col { display: flex; flex-direction: column; gap: 8px; width: min(100%, 600px); }
 	.pending-line { display: flex; }
 	.pending-line.center { justify-content: center; }
 	.pending-line.buttons { justify-content: flex-end; gap: 8px; }
 	.pending-input { width: 100%; padding: 6px 8px; }
-  .pending-line input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
-    vertical-align: middle;
-    margin-right: -10px !important;
-    margin-left: -17px;
-    cursor: pointer;
-  }
+	.pending-line.inputs { display: flex; gap: 8px; }
+	.pending-line.checkbox { display: flex; justify-content: center; width: 100%; }
 
     @media (max-width: 480px) {
       th, td { padding: 6px; font-size: 0.95rem; }
@@ -49,7 +43,7 @@
 			<th class="center" style="width: 90px;">Plassering</th>
 			<th>Navn</th>
 			<th class="right" style="width: 120px;">Tid</th>
-			<th style="width: 120px;">Tidspunkt</th>
+			<th class="center" style="width: 120px;">Tidspunkt</th>
 		  </tr>
 		</thead>
       <tbody></tbody>
