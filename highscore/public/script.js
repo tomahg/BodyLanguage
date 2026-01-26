@@ -1,5 +1,5 @@
 const LOCALE = "nb-NO";
-const REFRESH_MS = 2000;
+const REFRESH_MS = 1000;
 
 let refreshTimer = null;
 let forceRenderPendingOnce = false;
@@ -78,7 +78,7 @@ function renderHighscores(list) {
   });
 }
 
-function renderPending(pending) {
+async function renderPending(pending) {
   const section = document.getElementById("pending-section");
   if (!section) return;
   section.innerHTML = "";
@@ -87,6 +87,9 @@ function renderPending(pending) {
     // Ikke vis overskrift når det ikke finnes pending
     return;
   }
+
+  const res = await fetch("/state", { cache: "no-store" });
+  const state = await res.json();
 
   const container = document.createElement("div");
   section.appendChild(container);
@@ -104,7 +107,15 @@ function renderPending(pending) {
     const line1 = document.createElement("div");
     line1.className = "pending-line center";
     const label = document.createElement("span");
-    label.textContent = `Tid: ${formatSecondsMMSS(p.time)}`;
+    if (state.highscores.length === 0 || p.time < state.highscores[0].time) {
+      label.textContent = `🏆 Ny rekord! ${formatSecondsMMSS(p.time)} 🏆`;
+    }
+    else if (state.highscores.length < 10 || p.time < state.highscores[9].time) {
+      label.textContent = `🎉 Ny topp 10-tid! ${formatSecondsMMSS(p.time)} 🎉`;
+    } 
+    else {
+      label.textContent = `Tid: ${formatSecondsMMSS(p.time)}`;
+    }
     line1.appendChild(label);
 
     // Linje 2: Navn og Telefon side by side + knapper til høyre
@@ -118,6 +129,7 @@ function renderPending(pending) {
     inputName.className = "pending-input";
     inputName.placeholder = "Navn";
     inputName.required = true;
+    inputName.maxLength = 42;
     inputName.dataset.pendingId = p.id;
 
     const inputPhone = document.createElement("input");
@@ -149,12 +161,12 @@ function renderPending(pending) {
 
     // Linje 3: Samtykke (checkbox, default unchecked) under inputs, spanning both
     const line3 = document.createElement("div");
-    line3.className = "";
+    line3.className = "checkbox-field";
     const inputConsent = document.createElement("input");
     inputConsent.type = "checkbox";
     inputConsent.name = "consent";
     inputConsent.id = `consent-${p.id}`;
-    inputConsent.checked = false; // default: ikke krysset av
+    inputConsent.checked = false; 
 
     const consentLabel = document.createElement("label");
     consentLabel.setAttribute("for", inputConsent.id);
@@ -164,8 +176,13 @@ function renderPending(pending) {
     // litt luft mellom boks og tekst
     inputConsent.style.marginRight = "0.5rem";
 
-    line3.appendChild(inputConsent);
-    line3.appendChild(consentLabel);
+    const line3div1 = document.createElement("div");
+    const line3div2 = document.createElement("div");
+    line3div1.appendChild(inputConsent);
+    line3div2.appendChild(consentLabel);
+    
+    line3.appendChild(line3div1);
+    line3.appendChild(line3div2);
 
     // Enter på navn
     inputName.addEventListener("keydown", async (e) => {

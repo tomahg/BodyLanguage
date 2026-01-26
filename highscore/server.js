@@ -3,7 +3,7 @@
 // - Local only (127.0.0.1)
 // - Endpoints: /submit, /state, /register, /dismiss
 // - Persists to highscores.json
-// - Keeps highscores sorted (fastest first) and trimmed to top 10
+// - Keeps highscores sorted (fastest first)
 // - Stores { name, phone, time, date } on register
 
 const express = require("express");
@@ -78,7 +78,13 @@ function persist() {
 }
 
 function keepSorted() {
-  state.highscores.sort((a, b) => a.time - b.time);
+  state.highscores.sort((a, b) => {
+    if (a.time !== b.time) {
+      return a.time - b.time; // fastest time first
+    }
+    // If times are equal, sort by date (earlier first)
+    return new Date(a.date) - new Date(b.date);
+  });
 }
 
 function newId() {
