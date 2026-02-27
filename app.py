@@ -22,6 +22,9 @@ COMMAND_DELAY = 0
 THRESHOLD_DUCK_Y = 200 # Alfa: 200, Office desk: 430
 THRESHOLD_EDGE = 240
 
+COMPETITION_MODE = False
+COMPETITION_WORD = 'kode24'
+
 class PoseDetector() :    
     def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
                  enable_segmentation=False, smooth_segmentation=True,
@@ -221,7 +224,7 @@ def main():
                         interpreter_finished_debug_and_print = True
                         interpreter_paused = True
                 interpreter.print_cells(frame)
-                if code_output == 'NOVA':
+                if code_output == COMPETITION_WORD:
                     interpreter.print_outout(frame, code_output, (0,255,0))
                 else:
                     if interpreter_finished_debug_and_print:                        
@@ -537,25 +540,26 @@ def main():
             if last_command not in ['default', '']:
                 nova_end_time = None
 
-            if nova_started or nova_printed:
-                if nova_printed:
-                    time = total_time
-                else:
-                    if nova_end_time == None:
-                        time = datetime.datetime.now() - nova_start_time
+            if COMPETITION_MODE:
+                if nova_started or nova_printed:
+                    if nova_printed:
+                        time = total_time
                     else:
-                        time = nova_end_time - nova_start_time
+                        if nova_end_time == None:
+                            time = datetime.datetime.now() - nova_start_time
+                        else:
+                            time = nova_end_time - nova_start_time
 
-                score_color = (0,255,0)
-                formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
-                offset = interpreter.get_text_width(formatted_time, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
-                cv2.putText(frame, formatted_time, (8 * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, score_color, 2)
+                    score_color = (0,255,0)
+                    formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
+                    offset = interpreter.get_text_width(formatted_time, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
+                    cv2.putText(frame, formatted_time, (8 * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, score_color, 2)
 
 
 
-            cv2.namedWindow('Nova', cv2.WINDOW_NORMAL)
-            cv2.setMouseCallback('Nova', on_mouse)
-            cv2.imshow('Nova', annotated_frame)
+            cv2.namedWindow('BodyFuck', cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback('BodyFuck', on_mouse)
+            cv2.imshow('BodyFuck', annotated_frame)
 
         key = cv2.waitKeyEx(1)
 
@@ -586,9 +590,9 @@ def main():
             elif key == 7995392: #F11
                 fullscreen = not fullscreen
                 if fullscreen:
-                    cv2.setWindowProperty("Nova", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+                    cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
                 else:
-                    cv2.setWindowProperty("Nova", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
+                    cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
         if len(code) == 0:
             nova_started = False
@@ -599,7 +603,7 @@ def main():
             nova_start_time = datetime.datetime.now()
             nova_end_time = None
 
-        if code_output == 'NOVA' and nova_printed == False: 
+        if code_output == COMPETITION_WORD and nova_printed == False: 
             if nova_end_time == None:
                 total_time = datetime.datetime.now() - nova_start_time
             else:
