@@ -224,7 +224,7 @@ def main():
                         interpreter_finished_debug_and_print = True
                         interpreter_paused = True
                 interpreter.print_cells(frame)
-                if code_output == COMPETITION_WORD:
+                if code_output == COMPETITION_WORD or COMPETITION_MODE == False:
                     interpreter.print_outout(frame, code_output, (0,255,0))
                 else:
                     if interpreter_finished_debug_and_print:                        
