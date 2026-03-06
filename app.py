@@ -526,7 +526,7 @@ def main():
                                 nova_end_time = None                 
                     elif clap_count == 1:
                         if clap_print1 == 0:
-                            clap_display_for_frames = 10
+                            clap_display_for_frames = 20
                             clap_print1 = 1
                             # Pause / resume debugger immediately, without waiting for potential second clap
                             if execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
