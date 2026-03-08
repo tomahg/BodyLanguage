@@ -2,8 +2,10 @@ from Interpreter import Visualnterpreter
 from DrawUtils import SpeechBubble
 import cv2
 import datetime
+import json
 import math
 import mediapipe as mp
+import os
 from mediapipe.python.solutions.pose import PoseLandmark
 import msvcrt
 import numpy as np
@@ -19,8 +21,27 @@ COMMAND_DELAY = 0
 
 # Threshold can be updated by clicking the video stream
 # Use the g command to view and test the updated thresholds
-THRESHOLD_DUCK_Y = 200 # Alfa: 200, Office desk: 430
-THRESHOLD_EDGE = 240
+THRESHOLD_DUCK_Y = 250 # Full body: ~200, Office desk: ~400
+THRESHOLD_EDGE = 430
+
+OFFSETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'offsets.json')
+
+def load_offsets():
+    global THRESHOLD_DUCK_Y, THRESHOLD_EDGE
+    if os.path.exists(OFFSETS_FILE):
+        try:
+            with open(OFFSETS_FILE, 'r') as f:
+                data = json.load(f)
+            THRESHOLD_DUCK_Y = data.get('THRESHOLD_DUCK_Y', THRESHOLD_DUCK_Y)
+            THRESHOLD_EDGE = data.get('THRESHOLD_EDGE', THRESHOLD_EDGE)
+        except (json.JSONDecodeError, IOError):
+            pass
+
+def save_offsets():
+    with open(OFFSETS_FILE, 'w') as f:
+        json.dump({'THRESHOLD_DUCK_Y': THRESHOLD_DUCK_Y, 'THRESHOLD_EDGE': THRESHOLD_EDGE}, f)
+
+load_offsets()
 
 COMPETITION_MODE = False
 COMPETITION_WORD = 'kode24'
@@ -633,6 +654,7 @@ def on_mouse(event, x, y, flags, param):
         else:
             THRESHOLD_EDGE = 640 - x
         THRESHOLD_DUCK_Y = y
+        save_offsets()
         return
     
 if __name__ == "__main__":
