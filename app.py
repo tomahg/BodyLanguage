@@ -590,7 +590,7 @@ def main():
         if key != -1:
             if key == ord('c') or key == ord('C'): #Toggle code view
                 show_code_lines = not show_code_lines
-            elif key == ord('g') or key == ord('G'): #Toggle grid (g key or vk_media_prev_track(using ahk))
+            elif key == ord('g') or key == ord('G'): #Toggle grid 
                 show_grid_lines = not show_grid_lines
             elif key == 8: #Backspace
                 if len(code) > 0 and code[-1] in ['[', ']']:
@@ -598,7 +598,7 @@ def main():
                 code = code[:-1]
                 if code == '':
                     nova_end_time = None
-            elif key == 3014656 or key == 2555904: #Clear code (delete key or vk_media_next_track(using ahk))
+            elif key == 3014656 or key == 2555904: #Clear code (delete key or right arrow / clicker)
                 code = ''
                 code_output = ''
                 execute_code = False
