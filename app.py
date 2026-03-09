@@ -588,9 +588,9 @@ def main():
             break
 
         if key != -1:
-            if key == ord('c'): #Toggle code view
+            if key == ord('c') or key == ord('C'): #Toggle code view
                 show_code_lines = not show_code_lines
-            elif key == ord('g'): #Toggle grid (g key or vk_media_prev_track(using ahk))
+            elif key == ord('g') or key == ord('G'): #Toggle grid (g key or vk_media_prev_track(using ahk))
                 show_grid_lines = not show_grid_lines
             elif key == 8: #Backspace
                 if len(code) > 0 and code[-1] in ['[', ']']:
@@ -606,7 +606,7 @@ def main():
                 nova_end_time = None
                 # Make sure cells at the bottom of the screen is hidden
                 ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
-            elif key == ord('p'): #Pause
+            elif key == ord('p') or key == ord('P'): #Pause
                 pause = not pause
             elif key == 7995392: #F11
                 fullscreen = not fullscreen
