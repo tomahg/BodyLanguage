@@ -202,15 +202,14 @@ def main():
             annotated_frame = detector.process(frame, draw=not pause)
             landmarks = detector.find_pixel_positions(frame)
 
+            h, w, _ = frame.shape
             THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
             THRESHOLD_RIGHT_X = THRESHOLD_EDGE
 
-            if show_grid_lines: 
+            if show_grid_lines:
                 cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
                 cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)
                 cv2.line(frame, (0, THRESHOLD_DUCK_Y), (w, THRESHOLD_DUCK_Y), (111,111,111), 2)
-
-            h, w, _ = frame.shape
             # w = 640
             # h = 480
             if execute_code:
