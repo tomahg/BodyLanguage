@@ -65,7 +65,7 @@ class PoseDetector() :
                                      self.enable_segmentation, self.smooth_segmentation,
                                      self.detectionCon, self.trackCon)
 
-    def process (self, img):
+    def process (self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         self.results = self.pose.process(imgRGB)        
 
@@ -89,7 +89,7 @@ class PoseDetector() :
 
         # Draw body landmarks
         # Default style = custom_style = mp.solutions.drawing_styles.get_default_pose_landmarks_style()
-        if self.results.pose_landmarks:
+        if self.results.pose_landmarks and draw:
             self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
         return img
     
@@ -199,7 +199,7 @@ def main():
 
         if ready:    
             frame = cv2.flip(flipped_frame, 1)
-            annotated_frame = detector.process(frame)
+            annotated_frame = detector.process(frame, draw=not pause)
             landmarks = detector.find_pixel_positions(frame)
 
             THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
