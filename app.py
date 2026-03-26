@@ -24,6 +24,8 @@ COMMAND_DELAY = 0
 THRESHOLD_DUCK_Y = 250 # Full body: ~200, Office desk: ~400
 THRESHOLD_EDGE = 430
 
+SHOW_GRID_LINES = False
+
 OFFSETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'offsets.json')
 
 def load_offsets():
@@ -146,8 +148,9 @@ def main():
     detector = PoseDetector()
     cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
+    global SHOW_GRID_LINES
     show_code_lines = True
-    show_grid_lines = False
+    SHOW_GRID_LINES = False
 
     last_command = ''
     same_command_count = 0
@@ -206,7 +209,7 @@ def main():
             THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
             THRESHOLD_RIGHT_X = THRESHOLD_EDGE
 
-            if show_grid_lines:
+            if SHOW_GRID_LINES:
                 cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
                 cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)
                 cv2.line(frame, (0, THRESHOLD_DUCK_Y), (w, THRESHOLD_DUCK_Y), (111,111,111), 2)
@@ -590,7 +593,7 @@ def main():
             if key == ord('c') or key == ord('C'): #Toggle code view
                 show_code_lines = not show_code_lines
             elif key == ord('g') or key == ord('G'): #Toggle grid 
-                show_grid_lines = not show_grid_lines
+                SHOW_GRID_LINES = not SHOW_GRID_LINES
             elif key == 8: #Backspace
                 if len(code) > 0 and code[-1] in ['[', ']']:
                     reload_code = True
@@ -647,7 +650,7 @@ def main():
 
 def on_mouse(event, x, y, flags, param):
     global THRESHOLD_EDGE, THRESHOLD_DUCK_Y
-    if event == cv2.EVENT_LBUTTONDOWN:
+    if event == cv2.EVENT_LBUTTONDOWN and SHOW_GRID_LINES:
         if x > (640/2):
             THRESHOLD_EDGE = x
         else:
