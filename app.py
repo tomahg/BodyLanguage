@@ -6,7 +6,9 @@ import json
 import math
 import mediapipe as mp
 import os
-from mediapipe.python.solutions.pose import PoseLandmark
+from mediapipe.tasks import python as mp_tasks
+from mediapipe.tasks.python import vision as mp_vision
+from mediapipe.tasks.python.components.containers import NormalizedLandmark
 import msvcrt
 import numpy as np
 import requests
@@ -47,60 +49,62 @@ load_offsets()
 
 COMPETITION_MODE = False
 COMPETITION_WORD = 'kode24'
+CAMERA_INDEX = 0
 
-class PoseDetector() :    
-    def __init__(self, mode=False, complexity=1, smooth_landmarks=True,
-                 enable_segmentation=False, smooth_segmentation=True,
-                 detectionCon=0.5, trackCon=0.5):
-        
-        self.mode = mode 
-        self.complexity = complexity
-        self.smooth_landmarks = smooth_landmarks
-        self.enable_segmentation = enable_segmentation
-        self.smooth_segmentation = smooth_segmentation
-        self.detectionCon = detectionCon
-        self.trackCon = trackCon
-        
-        self.mpDraw = mp.solutions.drawing_utils
-        self.mpPose = mp.solutions.pose
-        self.pose = self.mpPose.Pose(self.mode, self.complexity, self.smooth_landmarks,
-                                     self.enable_segmentation, self.smooth_segmentation,
-                                     self.detectionCon, self.trackCon)
+_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'annotator', 'pose_landmarker.task')
 
-    def process (self, img, draw=True):
+_FACE_LANDMARK_INDICES = {
+    mp_vision.PoseLandmark.LEFT_EYE.value,
+    mp_vision.PoseLandmark.RIGHT_EYE.value,
+    mp_vision.PoseLandmark.LEFT_EYE_INNER.value,
+    mp_vision.PoseLandmark.RIGHT_EYE_INNER.value,
+    mp_vision.PoseLandmark.LEFT_EAR.value,
+    mp_vision.PoseLandmark.RIGHT_EAR.value,
+    mp_vision.PoseLandmark.LEFT_EYE_OUTER.value,
+    mp_vision.PoseLandmark.RIGHT_EYE_OUTER.value,
+    mp_vision.PoseLandmark.NOSE.value,
+    mp_vision.PoseLandmark.MOUTH_LEFT.value,
+    mp_vision.PoseLandmark.MOUTH_RIGHT.value,
+}
+PoseLandmark = mp_vision.PoseLandmark
+
+class PoseDetector():
+    def __init__(self, detectionCon=0.5, trackCon=0.5):
+        options = mp_vision.PoseLandmarkerOptions(
+            base_options=mp_tasks.BaseOptions(model_asset_path=_MODEL_PATH),
+            running_mode=mp_vision.RunningMode.IMAGE,
+            num_poses=1,
+            min_pose_detection_confidence=detectionCon,
+            min_tracking_confidence=trackCon,
+        )
+        self.pose = mp_vision.PoseLandmarker.create_from_options(options)
+        self._connections = mp_vision.PoseLandmarksConnections.POSE_LANDMARKS
+        self.detection_result = None
+
+    def process(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        self.results = self.pose.process(imgRGB)        
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(imgRGB))
+        self.detection_result = self.pose.detect(mp_image)
 
-        # Hide face landmarks
-        excluded_landmarks = [
-            PoseLandmark.LEFT_EYE, 
-            PoseLandmark.RIGHT_EYE, 
-            PoseLandmark.LEFT_EYE_INNER, 
-            PoseLandmark.RIGHT_EYE_INNER, 
-            PoseLandmark.LEFT_EAR,
-            PoseLandmark.RIGHT_EAR,
-            PoseLandmark.LEFT_EYE_OUTER,
-            PoseLandmark.RIGHT_EYE_OUTER,
-            PoseLandmark.NOSE,
-            PoseLandmark.MOUTH_LEFT,
-            PoseLandmark.MOUTH_RIGHT ]
+        if self.detection_result.pose_landmarks and draw:
+            pose_landmarks = self.detection_result.pose_landmarks[0]
+            # Hide face landmarks by zeroing visibility
+            filtered = [
+                NormalizedLandmark(x=lm.x, y=lm.y, z=lm.z,
+                                   visibility=0.0 if i in _FACE_LANDMARK_INDICES else lm.visibility)
+                for i, lm in enumerate(pose_landmarks)
+            ]
+            mp_vision.drawing_utils.draw_landmarks(img, filtered, self._connections)
 
-        for landmark in excluded_landmarks:
-            if self.results.pose_landmarks:
-                self.results.pose_landmarks.landmark[landmark].visibility = 0
-
-        # Draw body landmarks
-        # Default style = custom_style = mp.solutions.drawing_styles.get_default_pose_landmarks_style()
-        if self.results.pose_landmarks and draw:
-            self.mpDraw.draw_landmarks(img, self.results.pose_landmarks, self.mpPose.POSE_CONNECTIONS)
         return img
-    
+
     def find_pixel_positions(self, img):
         self.landmark_list = []
-        if self.results.pose_landmarks:
-            for id, lm in enumerate(self.results.pose_landmarks.landmark):
-                # Determining the pixel position of the landmarks
-                h, w, _ = img.shape
+        if self.detection_result and self.detection_result.pose_landmarks:
+            pose_landmarks = self.detection_result.pose_landmarks[0]
+            # Determining the pixel position of the landmarks
+            h, w, _ = img.shape
+            for id, lm in enumerate(pose_landmarks):
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 self.landmark_list.append([id, cx, cy])
         return self.landmark_list
@@ -145,11 +149,12 @@ def flush_input():
         msvcrt.getch()
 
 def main():
-    detector = PoseDetector()
-    camera_index = 0
-    cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
-
+    global CAMERA_INDEX
     global SHOW_GRID_LINES
+
+    detector = PoseDetector()
+    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+
     show_code_lines = True
     SHOW_GRID_LINES = False
 
