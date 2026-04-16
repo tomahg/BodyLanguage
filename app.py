@@ -146,7 +146,7 @@ def flush_input():
 
 def main():
     detector = PoseDetector()
-    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
     global SHOW_GRID_LINES
     show_code_lines = True
