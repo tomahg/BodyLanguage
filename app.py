@@ -104,12 +104,12 @@ class PoseDetector() :
                 cx, cy = int(lm.x * w), int(lm.y * h)
                 self.landmark_list.append([id, cx, cy])
         return self.landmark_list
-        
-    def find_angle(self, p1, p2, p3):   
+
+    def find_angle(self, p1, p2, p3):
         x1, y1 = self.landmark_list[p1][1:]
         x2, y2 = self.landmark_list[p2][1:]
         x3, y3 = self.landmark_list[p3][1:]
-        
+
         angle = math.degrees(math.atan2(y3-y2, x3-x2) - math.atan2(y1-y2, x1-x2))
         if angle < 0:
             angle += 360
@@ -117,9 +117,9 @@ class PoseDetector() :
                 angle = 360 - angle
         elif angle > 180:
             angle = 360 - angle
-        
+
         return angle
-    
+
     def find_length(self, p1, p2):
         x1, y1 = self.landmark_list[p1][1:]
         x2, y2 = self.landmark_list[p2][1:]
@@ -146,7 +146,8 @@ def flush_input():
 
 def main():
     detector = PoseDetector()
-    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    camera_index = 0
+    cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
 
     global SHOW_GRID_LINES
     show_code_lines = True

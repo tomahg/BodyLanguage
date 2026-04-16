@@ -110,4 +110,16 @@ For debugging there are some keyboard commands available
 
 Of course, the use of keyboard commands is frowned upon by the bodyfuck community.
 
+#### Creating a virtual environment
+'''
+python -m venv .venv
+pip install -r requirements.txt
+'''
+
+#### Running from a virtual environment
+'''
+.venv\Scripts\activate.bat
+python bodyfuck.py
+'''
+
 Enjoy!
