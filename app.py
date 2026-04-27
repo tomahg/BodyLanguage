@@ -148,7 +148,9 @@ def main():
     global SHOW_GRID_LINES
 
     detector = PoseDetector()
-    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     show_code_lines = True
     SHOW_GRID_LINES = False
