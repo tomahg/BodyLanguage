@@ -9,7 +9,6 @@ import os
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.components.containers import NormalizedLandmark
-import msvcrt
 import numpy as np
 import requests
 
@@ -143,10 +142,6 @@ def draw_white_apha_box(img, x, y, h, w):
 
     # Put the image back to its position
     img[y:y+h, x:x+w] = res
-
-def flush_input():
-    while msvcrt.kbhit():
-        msvcrt.getch()
 
 def main():
     global CAMERA_INDEX
