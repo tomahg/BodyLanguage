@@ -9,7 +9,6 @@ import os
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.components.containers import NormalizedLandmark
-import msvcrt
 import numpy as np
 import requests
 
@@ -144,16 +143,14 @@ def draw_white_apha_box(img, x, y, h, w):
     # Put the image back to its position
     img[y:y+h, x:x+w] = res
 
-def flush_input():
-    while msvcrt.kbhit():
-        msvcrt.getch()
-
 def main():
     global CAMERA_INDEX
     global SHOW_GRID_LINES
 
     detector = PoseDetector()
-    cap = cv2.VideoCapture(CAMERA_INDEX, cv2.CAP_DSHOW)
+    cap = cv2.VideoCapture(CAMERA_INDEX)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
     show_code_lines = True
     SHOW_GRID_LINES = False
