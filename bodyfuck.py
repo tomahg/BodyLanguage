@@ -168,6 +168,7 @@ def main():
     clap_print2 = 0
 
     print_lock = 0
+    facepalm_lock = 0
     pause = False
     execute_code = False
     reload_code = False
@@ -455,16 +456,18 @@ def main():
                         and landmarks[PoseLandmark.LEFT_INDEX][2] > landmarks[PoseLandmark.NOSE][2] - half_upper_arm:
                     if last_command == '⌫':
                         same_command_count += 1
-                    else:
+                    elif facepalm_lock == 0:
+                        facepalm_lock = 1
                         last_command = '⌫'
                         same_command_count = 0
                         if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
-                            reload_code = True                    
+                            reload_code = True
                         code = code[:-1]
-                    if same_command_count > COMMAND_DELAY:
-                        bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
-                        bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
-                        speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
+                    else:
+                        last_command = '⌫'
+                    bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
+                    bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
+                    speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
                 else:
                     if last_command in ['<','>']:
                         code += last_command
@@ -481,6 +484,7 @@ def main():
                             if landmarks[PoseLandmark.LEFT_SHOULDER][1] > 140 and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > 140: # not too far left
                                 last_command = 'default'
                                 print_lock = 0 # Must return to default between each print command
+                                facepalm_lock = 0
                                 
                     if clap_print1 == 1 or clap_print2 == 1:
                         if clap_display_for_frames > 0:
