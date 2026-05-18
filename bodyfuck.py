@@ -615,6 +615,8 @@ def main():
                 nova_end_time = None
                 # Make sure cells at the bottom of the screen is hidden
                 ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
+                # un-pause
+                pause = False
             elif key == ord('p') or key == ord('P'): #Pause
                 pause = not pause
             elif key == 7995392: #F11
