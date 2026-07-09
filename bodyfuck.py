@@ -195,11 +195,11 @@ def main():
     interpreter = Visualnterpreter()
     speech_bubble = SpeechBubble()
 
-    nova_start_time = None
-    nova_end_time = None
+    competition_start_time = None
+    competition_end_time = None
     total_time = ''
-    nova_started = False
-    nova_printed = False
+    competition_started = False
+    competition_word_printed = False
     fullscreen = False
 
     # Menu
@@ -509,7 +509,7 @@ def main():
                                     cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                             else:
                                 if clap_count == 1:
-                                    nova_end_time = datetime.datetime.now()
+                                    competition_end_time = datetime.datetime.now()
                                     if execute_code:
                                         if interpreter_finished_debug_and_print or interpreter_stopped:
                                             interpreter.input_code(lines_of_code)
@@ -565,7 +565,7 @@ def main():
                                 else:
                                     code = ''
                                     code_output = ''
-                                    nova_end_time = None                 
+                                    competition_end_time = None                 
                         elif clap_count == 1:
                             if clap_print1 == 0:
                                 clap_display_for_frames = 20
@@ -580,17 +580,17 @@ def main():
                             clap_closing_timeframe -= 1
 
                 if last_command not in ['default', '']:
-                    nova_end_time = None
+                    competition_end_time = None
 
                 if COMPETITION_MODE:
-                    if nova_started or nova_printed:
-                        if nova_printed:
+                    if competition_started or competition_word_printed:
+                        if competition_word_printed:
                             time = total_time
                         else:
-                            if nova_end_time == None:
-                                time = datetime.datetime.now() - nova_start_time
+                            if competition_end_time == None:
+                                time = datetime.datetime.now() - competition_start_time
                             else:
-                                time = nova_end_time - nova_start_time
+                                time = competition_end_time - competition_start_time
 
                         score_color = (0,255,0)
                         formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
@@ -618,13 +618,13 @@ def main():
                         reload_code = True
                     code = code[:-1]
                     if code == '':
-                        nova_end_time = None
+                        competition_end_time = None
                 elif key == 3014656 or key == 2555904: #Clear code (delete key or right arrow / clicker)
                     code = ''
                     code_output = ''
                     execute_code = False
                     interpreter_paused = False
-                    nova_end_time = None
+                    competition_end_time = None
                     # Make sure cells at the bottom of the screen is hidden
                     ok, (interpreter_error_line, interpreter_error_char) = interpreter.prepare_code()
                     # un-pause
@@ -639,23 +639,23 @@ def main():
                         cv2.setWindowProperty("BodyFuck", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_NORMAL)
 
             if len(code) == 0:
-                nova_started = False
-                nova_printed = False
-            elif nova_started == False:
-                nova_started = True
-                nova_printed = False
-                nova_start_time = datetime.datetime.now()
-                nova_end_time = None
+                competition_started = False
+                competition_word_printed = False
+            elif competition_started == False:
+                competition_started = True
+                competition_word_printed = False
+                competition_start_time = datetime.datetime.now()
+                competition_end_time = None
 
             if COMPETITION_MODE:
-                if code_output == COMPETITION_WORD and nova_printed == False: 
-                    if nova_end_time == None:
-                        total_time = datetime.datetime.now() - nova_start_time
+                if code_output == COMPETITION_WORD and competition_word_printed == False: 
+                    if competition_end_time == None:
+                        total_time = datetime.datetime.now() - competition_start_time
                     else:
-                        total_time = nova_end_time - nova_start_time
+                        total_time = competition_end_time - competition_start_time
                     time_spent_seconds = int(total_time.total_seconds())
 
-                    nova_printed = True
+                    competition_word_printed = True
                     try:
                         resp = requests.post(
                             "http://127.0.0.1:3000/submit",
