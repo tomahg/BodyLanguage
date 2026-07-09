@@ -17,6 +17,7 @@ FONT_WEIGHT = 10
 MIN_CHARS_PER_LINE = 15
 MAX_LINES_OF_CODE = 2
 HORIZONTAL_MARGIN = 10
+FACEPALM_HEIGHT_FACTOR = 2.0
 
 COMMAND_DELAY = 0
 
@@ -143,6 +144,38 @@ def draw_white_apha_box(img, x, y, h, w):
     # Put the image back to its position
     img[y:y+h, x:x+w] = res
 
+def draw_facepalm_overlay(img, landmarks):
+    # Diagnostic overlay for the facepalm
+    li_x = landmarks[PoseLandmark.LEFT_INDEX][1]
+    li_y = landmarks[PoseLandmark.LEFT_INDEX][2]
+    left_eye_x = landmarks[PoseLandmark.LEFT_EYE_OUTER][1]
+    right_eye_x = landmarks[PoseLandmark.RIGHT_EYE_OUTER][1]
+    nose_y = landmarks[PoseLandmark.NOSE][2]
+    face_width = abs(left_eye_x - right_eye_x)
+    nose_top = nose_y - int(FACEPALM_HEIGHT_FACTOR * face_width)
+
+    checks = [
+        (f'Finger left of L eye  ({li_x} < {left_eye_x})', li_x < left_eye_x),
+        (f'Finger right of R eye ({li_x} > {right_eye_x})', li_x > right_eye_x),
+        (f'Finger above nose     ({li_y} < {nose_y})', li_y < nose_y),
+        (f'Finger not too high   ({li_y} > {nose_top})', li_y > nose_top),
+    ]
+
+    x, y, box_w = 10, 10, 360
+    line_h = 24
+    box_h = line_h * (len(checks) + 1) + 12
+    draw_white_apha_box(img, x, y, box_h, box_w)
+
+    all_ok = all(ok for _, ok in checks)
+    title_color = (0, 150, 0) if all_ok else (0, 0, 0)
+    cv2.putText(img, 'Facepalm requirements', (x + 8, y + 20),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, title_color, 1)
+    for i, (label, ok) in enumerate(checks):
+        color = (0, 150, 0) if ok else (0, 0, 255)
+        mark = 'OK ' if ok else 'X  '
+        cv2.putText(img, mark + label, (x + 8, y + 20 + line_h * (i + 1)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
+
 def main():
     global CAMERA_INDEX
     global SHOW_GRID_LINES
@@ -164,6 +197,7 @@ def main():
             return
 
     show_code_lines = True
+    show_facepalm_overlay = False
     SHOW_GRID_LINES = False
 
     last_command = ''
@@ -205,6 +239,7 @@ def main():
     # Menu
     print(' ')
     print('        c: Toggle code view')
+    print('        f: Toggle facepalm overlay')
     print('        g: Toggle grid')
     print('        p: Pause')
     print('backspace: Delete single character')
@@ -318,6 +353,10 @@ def main():
                     upper_arm_r = detector.find_length(PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW)
                     half_upper_arm = int((upper_arm_l + upper_arm_r) / 4)
                     upper_arm = int((upper_arm_l + upper_arm_r) / 2)
+
+                    # Diagnostic overlay: show which facepalm requirements are (un)met.
+                    if show_facepalm_overlay:
+                        draw_facepalm_overlay(frame, landmarks)
 
                     # Elbow positions
                     elbow_left_straight = elbow_l > 130
@@ -465,7 +504,7 @@ def main():
                     elif landmarks[PoseLandmark.LEFT_INDEX][1] < landmarks[PoseLandmark.LEFT_EYE_OUTER][1] \
                             and landmarks[PoseLandmark.LEFT_INDEX][1] > landmarks[PoseLandmark.RIGHT_EYE_OUTER][1] \
                             and landmarks[PoseLandmark.LEFT_INDEX][2] < landmarks[PoseLandmark.NOSE][2] \
-                            and landmarks[PoseLandmark.LEFT_INDEX][2] > landmarks[PoseLandmark.NOSE][2] - half_upper_arm:
+                            and landmarks[PoseLandmark.LEFT_INDEX][2] > landmarks[PoseLandmark.NOSE][2] - int(FACEPALM_HEIGHT_FACTOR * abs(landmarks[PoseLandmark.LEFT_EYE_OUTER][1] - landmarks[PoseLandmark.RIGHT_EYE_OUTER][1])):
                         if last_command == '⌫':
                             same_command_count += 1
                         elif facepalm_lock == 0:
@@ -611,7 +650,9 @@ def main():
             if key != -1:
                 if key == ord('c') or key == ord('C'): #Toggle code view
                     show_code_lines = not show_code_lines
-                elif key == ord('g') or key == ord('G'): #Toggle grid 
+                elif key == ord('f') or key == ord('F'): #Toggle facepalm overlay
+                    show_facepalm_overlay = not show_facepalm_overlay
+                elif key == ord('g') or key == ord('G'): #Toggle grid
                     SHOW_GRID_LINES = not SHOW_GRID_LINES
                 elif key == 8: #Backspace
                     if len(code) > 0 and code[-1] in ['[', ']']:
