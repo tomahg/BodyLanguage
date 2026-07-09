@@ -647,24 +647,25 @@ def main():
                 nova_start_time = datetime.datetime.now()
                 nova_end_time = None
 
-            if code_output == COMPETITION_WORD and nova_printed == False: 
-                if nova_end_time == None:
-                    total_time = datetime.datetime.now() - nova_start_time
-                else:
-                    total_time = nova_end_time - nova_start_time
-                time_spent_seconds = int(total_time.total_seconds())
+            if COMPETITION_MODE:
+                if code_output == COMPETITION_WORD and nova_printed == False: 
+                    if nova_end_time == None:
+                        total_time = datetime.datetime.now() - nova_start_time
+                    else:
+                        total_time = nova_end_time - nova_start_time
+                    time_spent_seconds = int(total_time.total_seconds())
 
-                nova_printed = True
-                try:
-                    resp = requests.post(
-                        "http://127.0.0.1:3000/submit",
-                        json={"time": time_spent_seconds},
-                        timeout=3.0
-                    )
-                    resp.raise_for_status()
-                    print("Posted score, server replied:", resp.json())
-                except Exception as e:
-                    print("Error posting score:", e)   
+                    nova_printed = True
+                    try:
+                        resp = requests.post(
+                            "http://127.0.0.1:3000/submit",
+                            json={"time": time_spent_seconds},
+                            timeout=3.0
+                        )
+                        resp.raise_for_status()
+                        print("Posted score, server replied:", resp.json())
+                    except Exception as e:
+                        print("Error posting score:", e)   
 
     finally:
         cap.release()
