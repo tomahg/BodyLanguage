@@ -29,6 +29,7 @@ class Visualnterpreter:
     history = []
 
     def build_jumpmap(self):
+        self.jumpmap = {}
         temp_jumpstack, jumpmap = [], {}
         for line_number, code_line in enumerate(self.code):
             for char_number, command in enumerate(code_line):
@@ -130,12 +131,17 @@ class Visualnterpreter:
 
         if command == "[":
             if self.cells[self.cell_pointer] == 0: 
+                if (char, line) not in self.jumpmap:
+                    return True, False, char, line, ''
                 self.code_pointer_char, self.code_pointer_line = self.jumpmap[(char, line)]
             else:
                 self.in_loop_level += 1
 
         if command == "]":
             if self.cells[self.cell_pointer] != 0: 
+                # No matching bracket: the loop has nowhere to jump back to
+                if (char, line) not in self.jumpmap:
+                    return True, False, char, line, ''
                 self.code_pointer_char, self.code_pointer_line = self.jumpmap[(char, line)]
             else:
                 self.in_loop_level -= 1

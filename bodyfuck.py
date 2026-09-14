@@ -406,7 +406,6 @@ def main():
     facepalm_lock = 0
     pause = False
     execute_code = False
-    reload_code = False
     code_output = ''
     interpreter_finished_debug_and_print = False
     interpreter_paused = False
@@ -543,11 +542,10 @@ def main():
                             lines_of_code.append(code_left_to_print.strip())
                             code_left_to_print = ''
 
+                    code_changed = lines_of_code != interpreter.code
                     interpreter.input_code(lines_of_code)
 
-                    # If code is updated with [ or ] while running, we need to update jump map
-                    if reload_code:
-                        reload_code = False                     
+                    if code_changed:
                         ok, (interpreter_error_line, interpreter_error_char) = interpreter.build_jumpmap()
                         if ok:
                             interpreter_error = False
@@ -690,8 +688,6 @@ def main():
                             if last_command != '[':
                                 last_command = '['
                                 code += last_command
-                                if execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
-                                    reload_code = True
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             # [ is strangely large, print it a little smaller, and further up, than other commands
                             cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -709,8 +705,6 @@ def main():
                             if last_command != ']':
                                 last_command = ']'
                                 code += last_command
-                                if execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
-                                    reload_code = True
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             # ] is strangely large, print it a little smaller, and further up, than other commands
                             cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -723,8 +717,6 @@ def main():
                             if facepalm_lock == 0:
                                 facepalm_lock = 1
                                 command_started_at = now
-                                if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
-                                    reload_code = True
                                 code = code[:-1]
                             last_command = '⌫'
                         bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
@@ -863,8 +855,6 @@ def main():
                 elif key == ord('g') or key == ord('G'): #Toggle grid
                     SHOW_GRID_LINES = not SHOW_GRID_LINES
                 elif key == 8: #Backspace
-                    if len(code) > 0 and code[-1] in ['[', ']']:
-                        reload_code = True
                     code = code[:-1]
                     if code == '':
                         competition_end_time = None
