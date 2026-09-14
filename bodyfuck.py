@@ -6,6 +6,7 @@ import json
 import math
 import mediapipe as mp
 import os
+import time
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python import vision as mp_vision
 from mediapipe.tasks.python.components.containers import NormalizedLandmark
@@ -19,7 +20,33 @@ MAX_LINES_OF_CODE = 2
 HORIZONTAL_MARGIN = 10
 FACEPALM_HEIGHT_FACTOR = 2.0
 
-COMMAND_DELAY = 0
+# --- Timings ---------------------------------------------------------------
+# Everything below is seconds. Used to be frames.
+
+# Grace period before the overlay for a newly recognised pose is drawn. 
+# 0.0 draws it immediately. Add a higher number for a delay.
+COMMAND_OVERLAY_DELAY_SECONDS = 0.0
+
+# How long to stay at the edge of the frame before < becomes [ (and > becomes ]).
+BRACKET_HOLD_SECONDS = 1.0
+
+# Recognising a clap: once the arms are spread wide, the hands have this long
+# to meet, or the gesture is discarded.
+CLAP_HANDS_TOGETHER_SECONDS = 1.25
+
+# After a clap has been recognised: how long the Clap! banner stays up.
+# The single-clap banner doubles as the window in which a second clap can still
+# arrive and turn it into a double clap, so the code is not run until it runs
+# out. The double-clap banner is display only, the stop/clear has already
+# happened by then.
+CLAP_SINGLE_DISPLAY_SECONDS = 1.0
+CLAP_DOUBLE_DISPLAY_SECONDS = 0.5
+
+# Interpreter pacing: shortest time between two executed brainfuck commands.
+# Inside a [ ] loop it runs faster, so loops do not take forever.
+INTERPRETER_STEP_SECONDS = 0.15
+INTERPRETER_LOOP_STEP_SECONDS = 0.05
+
 
 # Threshold can be updated by clicking the video stream
 # Use the g command to view and test the updated thresholds
@@ -48,8 +75,8 @@ def save_offsets():
 load_offsets()
 
 COMPETITION_MODE = False
-CAMERA_INDEX = 0
 COMPETITION_WORD = 'NDC'
+CAMERA_INDEX = 1
 
 _MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'annotator', 'pose_landmarker.task')
 
@@ -221,14 +248,14 @@ def main():
     SHOW_GRID_LINES = False
 
     last_command = ''
-    same_command_count = 0
+    command_started_at = time.perf_counter()
     code = ''
     lines_of_code = []
 
     clap_count = 0
     clap_stage = ''
-    clap_closing_timeframe = 0
-    clap_display_for_frames = 0
+    clap_hands_together_deadline = 0.0
+    clap_display_until = 0.0
     clap_print1 = 0
     clap_print2 = 0
 
@@ -247,6 +274,8 @@ def main():
     step_forward = False
     step_back = False
     interpreter = Visualnterpreter()
+    interpreter.step_interval_seconds = INTERPRETER_STEP_SECONDS
+    interpreter.loop_step_interval_seconds = INTERPRETER_LOOP_STEP_SECONDS
     speech_bubble = SpeechBubble()
 
     competition_start_time = None
@@ -272,6 +301,7 @@ def main():
             ready, flipped_frame = cap.read()
 
             if ready:    
+                now = time.perf_counter()
                 frame = cv2.flip(flipped_frame, 1)
                 annotated_frame = detector.process(frame, draw=not pause)
                 landmarks = detector.find_pixel_positions(frame)
@@ -388,14 +418,12 @@ def main():
 
                     # Arms out, printing
                     if elbows_straight and left_arm_horizonal and right_arm_horizonal:
-                        if last_command == '.':
-                            same_command_count += 1
-                        elif print_lock == 0: # Avoid triggering double .
+                        if last_command != '.' and print_lock == 0: # Avoid triggering double .
                             print_lock = 1
                             last_command = '.'
                             code += last_command
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY:
+                            command_started_at = now
+                        if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             # Print . a litle higher than other commands
                             cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
@@ -404,31 +432,25 @@ def main():
                     elif interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
                         # Remberer that left and right are mirrored
                         if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
-                            if last_command == '-->':
-                                same_command_count += 1
-                            elif (last_command == 'default' or last_command == ''):
+                            if last_command == 'default' or last_command == '':
                                 last_command = '-->'
-                                same_command_count = 0
+                                command_started_at = now
                                 step_forward = True
                         elif elbow_right_straight and right_arm_horizonal and not (elbow_left_straight and left_arm_horizonal):
-                            if last_command == '<--':
-                                same_command_count += 1
-                            elif (last_command == 'default' or last_command == ''):
+                            if last_command == 'default' or last_command == '':
                                 last_command = '<--'
-                                same_command_count = 0
+                                command_started_at = now
                                 step_back = True
 
                     # Double-up, not included in original spec
                     elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
-                        if last_command == '++':
-                            same_command_count += 1
-                        elif last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
+                        if last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
                             last_command = '++'
                             if code.endswith('+++++'):
                                 code += ' +'
                             else:
                                 code += '+'
-                        else:
+                        elif last_command != '++':
                             last_command = '++'
                             if code.endswith('+++++'):
                                 code += ' ++'
@@ -436,27 +458,25 @@ def main():
                                 code += '+ +'
                             else:
                                 code += last_command
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY:
+                            command_started_at = now
+                        if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 145, 95, 110, 355)
                             cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
                             cv2.putText(frame, '+', (380, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)                                
                
                     # Hands up!
                     elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm or landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm : 
-                        if last_command == '+':
-                            same_command_count += 1
-                        elif last_command == '++':  # Do not unintentional trigger single +, if not lowering both arms exacly at the same time 
-                            same_command_count += 1
-                        else:
+                        # '++' keeps its timer running, so a single + is not unintentionally
+                        # triggered when not lowering both arms exacly at the same time
+                        if last_command != '+' and last_command != '++':
                             last_command = '+'
                             if code.endswith('+++++'):
                                 code += ' ' + last_command
                             else:
                                 code += last_command
-                            same_command_count = 0
+                            command_started_at = now
 
-                        if same_command_count > COMMAND_DELAY:
+                        if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             if landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
                                 draw_white_apha_box(frame, 145, 95, 110, 120)
                                 cv2.putText(frame, '+', (140, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT) 
@@ -466,30 +486,27 @@ def main():
             
                     # Duck, shoulders below threshold
                     elif landmarks[PoseLandmark.LEFT_SHOULDER][2] > THRESHOLD_DUCK_Y and landmarks[PoseLandmark.RIGHT_SHOULDER][2] > THRESHOLD_DUCK_Y: 
-                        if last_command == '-':
-                            same_command_count += 1
-                        else:
+                        if last_command != '-':
                             last_command = '-'
                             if code.endswith('-----'):
                                 code += ' ' + last_command
                             else:
                                 code += last_command
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY:
+                            command_started_at = now
+                        if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             cv2.putText(frame, '-', (280-20, 200-5), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
                 
                     # Body to the left
                     elif landmarks[PoseLandmark.LEFT_SHOULDER][1] < THRESHOLD_LEFT_X and landmarks[PoseLandmark.RIGHT_SHOULDER][1] < THRESHOLD_LEFT_X:
-                        if last_command == '<' or last_command == '[':
-                            same_command_count += 1
-                        else:
+                        if last_command != '<' and last_command != '[':
                             last_command = '<'
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY and same_command_count < 30:
+                            command_started_at = now
+                        held_seconds = now - command_started_at
+                        if held_seconds >= COMMAND_OVERLAY_DELAY_SECONDS and held_seconds < BRACKET_HOLD_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
-                            cv2.putText(frame, '<', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                        if same_command_count > 30:
+                            cv2.putText(frame, '<', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        if held_seconds > BRACKET_HOLD_SECONDS:
                             if last_command != '[':
                                 last_command = '['
                                 code += last_command
@@ -501,15 +518,14 @@ def main():
                 
                     # Body to the right
                     elif landmarks[PoseLandmark.LEFT_SHOULDER][1] > THRESHOLD_RIGHT_X and landmarks[PoseLandmark.RIGHT_SHOULDER][1] > THRESHOLD_RIGHT_X:
-                        if last_command == '>' or last_command == ']':
-                            same_command_count += 1
-                        else:
+                        if last_command != '>' and last_command != ']':
                             last_command = '>'
-                            same_command_count = 0
-                        if same_command_count > COMMAND_DELAY and same_command_count < 30:
+                            command_started_at = now
+                        held_seconds = now - command_started_at
+                        if held_seconds >= COMMAND_OVERLAY_DELAY_SECONDS and held_seconds < BRACKET_HOLD_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
-                            cv2.putText(frame, '>', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)   
-                        if same_command_count > 30:
+                            cv2.putText(frame, '>', (260+5, 200), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
+                        if held_seconds > BRACKET_HOLD_SECONDS:
                             if last_command != ']':
                                 last_command = ']'
                                 code += last_command
@@ -523,16 +539,13 @@ def main():
                     # Index finger horizontally between the outer eyes, above eyes, not too far above head
                     elif is_facepalm(landmarks, PoseLandmark.LEFT_INDEX) \
                             or is_facepalm(landmarks, PoseLandmark.RIGHT_INDEX):
-                        if last_command == '⌫':
-                            same_command_count += 1
-                        elif facepalm_lock == 0:
-                            facepalm_lock = 1
-                            last_command = '⌫'
-                            same_command_count = 0
-                            if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
-                                reload_code = True
-                            code = code[:-1]
-                        else:
+                        if last_command != '⌫':
+                            if facepalm_lock == 0:
+                                facepalm_lock = 1
+                                command_started_at = now
+                                if code[-1:] in ['[',']'] and execute_code == True and interpreter_stopped == False and interpreter_finished_debug_and_print == False:
+                                    reload_code = True
+                                code = code[:-1]
                             last_command = '⌫'
                         bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
                         bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
@@ -541,7 +554,7 @@ def main():
                         if last_command in ['<','>']:
                             code += last_command
                         last_command = ''
-                        same_command_count = 0 
+                        command_started_at = now
 
                         # Dummy command to identify default position with arms down
                         # Clapping should be performed while starting in this position. With wrists higher than elbows
@@ -556,8 +569,7 @@ def main():
                                     facepalm_lock = 0
                                 
                         if clap_print1 == 1 or clap_print2 == 1:
-                            if clap_display_for_frames > 0:
-                                clap_display_for_frames -= 1
+                            if now < clap_display_until:
                                 if clap_count >= 2:
                                     draw_white_apha_box(frame, 120, 95, 110, 400)
                                     cv2.putText(frame, 'Clap! Clap!', (150, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
@@ -604,15 +616,15 @@ def main():
                             if landmarks[PoseLandmark.LEFT_INDEX][1] > landmarks[PoseLandmark.LEFT_SHOULDER][1] and landmarks[PoseLandmark.RIGHT_INDEX][1] < landmarks[PoseLandmark.RIGHT_SHOULDER][1]:
                                 if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     if landmarks[PoseLandmark.LEFT_SHOULDER][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_SHOULDER][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
-                                        clap_stage = 'wide' 
-                                        clap_closing_timeframe = 25    
-                            if clap_stage == 'wide' and clap_closing_timeframe > 0 and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
+                                        clap_stage = 'wide'
+                                        clap_hands_together_deadline = now + CLAP_HANDS_TOGETHER_SECONDS
+                            if clap_stage == 'wide' and now < clap_hands_together_deadline and abs(landmarks[PoseLandmark.LEFT_INDEX][1] - landmarks[PoseLandmark.RIGHT_INDEX][1]) < int(half_upper_arm):
                                 if landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.LEFT_ELBOW][2] and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.RIGHT_ELBOW][2]:
                                     clap_stage = 'clap'
                                     clap_count += 1
                         if clap_count >= 2:
                             if clap_print2 == 0:
-                                clap_display_for_frames = 10
+                                clap_display_until = now + CLAP_DOUBLE_DISPLAY_SECONDS
                                 clap_print2 = 1
                                 # If interpreter is running: stop it
                                 # Otherwise clear code buffer
@@ -625,7 +637,7 @@ def main():
                                     competition_end_time = None                 
                         elif clap_count == 1:
                             if clap_print1 == 0:
-                                clap_display_for_frames = 20
+                                clap_display_until = now + CLAP_SINGLE_DISPLAY_SECONDS
                                 clap_print1 = 1
                                 # Pause / resume debugger immediately, without waiting for potential second clap
                                 if execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
@@ -633,8 +645,6 @@ def main():
                                         interpreter_paused = False
                                     else:
                                         interpreter_paused = True
-                        elif clap_stage == 'wide' and clap_closing_timeframe > 0:
-                            clap_closing_timeframe -= 1
 
                 if last_command not in ['default', '']:
                     competition_end_time = None
@@ -642,15 +652,15 @@ def main():
                 if COMPETITION_MODE:
                     if competition_started or competition_word_printed:
                         if competition_word_printed:
-                            time = total_time
+                            elapsed = total_time
                         else:
                             if competition_end_time == None:
-                                time = datetime.datetime.now() - competition_start_time
+                                elapsed = datetime.datetime.now() - competition_start_time
                             else:
-                                time = competition_end_time - competition_start_time
+                                elapsed = competition_end_time - competition_start_time
 
                         score_color = (0,255,0)
-                        formatted_time = f"{time.seconds // 60}:{time.seconds % 60:02}"
+                        formatted_time = f"{elapsed.seconds // 60}:{elapsed.seconds % 60:02}"
                         offset = interpreter.get_text_width(formatted_time, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
                         cv2.putText(frame, formatted_time, (8 * 79 - offset, 465), cv2.FONT_HERSHEY_PLAIN, 2, score_color, 2)
 

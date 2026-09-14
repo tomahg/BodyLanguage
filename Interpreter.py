@@ -6,6 +6,7 @@
 
 import cv2
 import numpy as np
+import time
 
 class Visualnterpreter:
     INTERPRETER_OFFSET_Y = 0
@@ -17,8 +18,12 @@ class Visualnterpreter:
     code_pointer_char = 0
     code_pointer_line = 0
     finished = False
-    debug_slowdown_count = 0
-    debug_slowdown_factor = 3
+    # Shortest wall-clock time between two executed commands, set from bodyfuck.py.
+    # Timing in seconds rather than frames keeps execution speed the same whether
+    # the render loop is fast or bogged down by a large external display.
+    step_interval_seconds = 0.15
+    loop_step_interval_seconds = 0.05
+    last_step_time = 0.0
     in_loop_level = 0
     last_movement_forward = True
     history = []
@@ -54,7 +59,7 @@ class Visualnterpreter:
         self.cell_pointer = 0
         self.code_pointer_char = -1
         self.code_pointer_line = 0
-        self.debug_slowdown_count = 0
+        self.last_step_time = 0.0
         self.finished = False
         self.in_loop_level = 0
         self.history = []
@@ -67,11 +72,13 @@ class Visualnterpreter:
             return True, False, 0, 0, ''
 
         # Step, step, step
-        if not single_step and self.in_loop_level == 0 and self.debug_slowdown_count % self.debug_slowdown_factor != 0:
-            self.debug_slowdown_count += 1
-            return False, False, self.code_pointer_char, self.code_pointer_line, '' 
+        # Inside a loop the shorter interval applies, so loops do not crawl
+        now = time.perf_counter()
+        interval = self.loop_step_interval_seconds if self.in_loop_level > 0 else self.step_interval_seconds
+        if not single_step and now - self.last_step_time < interval:
+            return False, False, self.code_pointer_char, self.code_pointer_line, ''
         else:
-            self.debug_slowdown_count = 1
+            self.last_step_time = now
             if self.code_pointer_char == None:
                 self.code_pointer_char = 0
                 self.code_pointer_line = 0
