@@ -274,6 +274,12 @@ def angle_difference(previous, current):
     # Signed degrees from one angle to the next, the short way around
     return (current - previous + 180.0) % 360.0 - 180.0
 
+def delete_last_command(code):
+    # The spaces that break up more than five + or - are formatting,
+    # not commands, so a single delete takes the space along with the command
+    # in front of it. Otherwise deleting reads as if nothing happened.
+    return code[:-1].rstrip(' ')
+
 class ForearmSpin:
     """Keeps the paused debugger stepping while a forearm is cranked around the elbow.
 
@@ -717,7 +723,7 @@ def main():
                             if facepalm_lock == 0:
                                 facepalm_lock = 1
                                 command_started_at = now
-                                code = code[:-1]
+                                code = delete_last_command(code)
                             last_command = '⌫'
                         bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
                         bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
@@ -855,7 +861,7 @@ def main():
                 elif key == ord('g') or key == ord('G'): #Toggle grid
                     SHOW_GRID_LINES = not SHOW_GRID_LINES
                 elif key == 8: #Backspace
-                    code = code[:-1]
+                    code = delete_last_command(code)
                     if code == '':
                         competition_end_time = None
                 elif key == 3014656 or key == 2555904: #Clear code (delete key or right arrow / clicker)
