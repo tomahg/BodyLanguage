@@ -47,6 +47,34 @@ CLAP_DOUBLE_DISPLAY_SECONDS = 0.5
 INTERPRETER_STEP_SECONDS = 0.15
 INTERPRETER_LOOP_STEP_SECONDS = 0.05
 
+# Fast stepping in the paused debugger: after pointing, the forearm is cranked
+# around the elbow to keep stepping the way the hand points.
+
+# Degrees of cranking that earn a single step. 45 makes a full turn eight steps,
+# so the faster the crank turns, the faster the debugger steps.
+SPIN_DEGREES_PER_STEP = 45.0
+
+# How far the crank has to turn, the same way, before it steps anything. Half a
+# turn is more than a forearm travels between pointing and hanging down, so
+# single stepping over and over is never mistaken for a crank.
+SPIN_MIN_DEGREES_TO_START = 180.0
+
+# Which way the crank turns: 1 lets each hand roll an imaginary wheel the way it
+# points, so the right arm turns clockwise and the left arm counter-clockwise.
+# Flip to -1 to turn both arms the other way.
+SPIN_TURN_SIGN = 1
+
+# Turning slower than this is an arm moving about, not a crank.
+SPIN_MIN_DEGREES_PER_SECOND = 120.0
+
+# No single frame can be worth more turning than this. Anything larger is the
+# pose detector jumping to a new guess, not an arm that moved.
+SPIN_MAX_DEGREES_PER_FRAME = 150.0
+
+# How long the crank may stall before the spin is forgotten, and the hand has to
+# point once more to start a new one.
+SPIN_TIMEOUT_SECONDS = 0.4
+
 
 # Threshold can be updated by clicking the video stream
 # Use the g command to view and test the updated thresholds
@@ -223,6 +251,121 @@ def draw_facepalm_overlay(img, landmarks):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
             line += 1
 
+def forearm_landmarks(direction):
+    # Remember that left and right are mirrored: direction 1 is the arm that
+    # points to the right of the screen, direction -1 the one pointing left
+    if direction > 0:
+        return PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST
+    return PoseLandmark.RIGHT_SHOULDER, PoseLandmark.RIGHT_ELBOW, PoseLandmark.RIGHT_WRIST
+
+def is_pointing(landmarks, direction):
+    # The hand has to be past the shoulder, on the side it is pointing to
+    shoulder, _, wrist = forearm_landmarks(direction)
+    return (landmarks[wrist][1] - landmarks[shoulder][1]) * direction > 0
+
+def forearm_angle(landmarks, direction):
+    # Angle of the forearm around the elbow. Y grows downwards, so the angle
+    # grows clockwise, the way it looks on screen
+    _, elbow, wrist = forearm_landmarks(direction)
+    return math.degrees(math.atan2(landmarks[wrist][2] - landmarks[elbow][2],
+                                   landmarks[wrist][1] - landmarks[elbow][1]))
+
+def angle_difference(previous, current):
+    # Signed degrees from one angle to the next, the short way around
+    return (current - previous + 180.0) % 360.0 - 180.0
+
+class ForearmSpin:
+    """Keeps the paused debugger stepping while a forearm is cranked around the elbow.
+
+    Only ever armed by the pointing gesture, so a crank has to start out from a
+    hand pointing the way it is about to turn. The turning has to follow the
+    pointing direction too, as if the hand rolled a wheel that way, which makes
+    the right arm turn clockwise and the left arm counter-clockwise. Every
+    SPIN_DEGREES_PER_STEP of turning is worth one step, so cranking twice as
+    fast steps twice as fast.
+    """
+
+    def __init__(self):
+        self.direction = 0
+        self.forget()
+
+    def forget(self):
+        self.last_angle = None
+        self.last_time = 0.0
+        self.forget_turning()
+
+    def forget_turning(self):
+        self.wound_up = 0.0
+        self.unspent = 0.0
+        self.turning_until = 0.0
+        self.spinning_until = 0.0
+
+    def arm(self, direction):
+        if direction != self.direction:
+            self.direction = direction
+            self.forget()
+
+    def disarm(self):
+        self.arm(0)
+
+    def is_spinning(self, now):
+        return self.direction != 0 and now < self.spinning_until
+
+    def update(self, landmarks, upper_arm, now):
+        """Feed the current pose, and get the steps the crank has earned since the last frame."""
+        if self.direction == 0:
+            return 0
+
+        # The elbow stays out to the side while the forearm swings around it,
+        # so an arm that is lowered is no longer cranking
+        shoulder, elbow, _ = forearm_landmarks(self.direction)
+        elbow_out = (landmarks[elbow][1] - landmarks[shoulder][1]) * self.direction > 0
+        elbow_level = abs(landmarks[elbow][2] - landmarks[shoulder][2]) < upper_arm
+        if not (elbow_out and elbow_level):
+            self.disarm()
+            return 0
+
+        angle = forearm_angle(landmarks, self.direction)
+        elapsed = now - self.last_time
+        if self.last_angle == None or elapsed <= 0:
+            self.last_angle = angle
+            self.last_time = now
+            return 0
+
+        turned = angle_difference(self.last_angle, angle) * self.direction * SPIN_TURN_SIGN
+        self.last_angle = angle
+        self.last_time = now
+
+        # More than this in a single frame is the pose detector jumping to a new
+        # guess rather than an arm that moved
+        if abs(turned) > SPIN_MAX_DEGREES_PER_FRAME:
+            return 0
+
+        # Turning the way the hand pointed winds the crank up, turning back
+        # unwinds it again. Swinging the forearm down to point once more unwinds
+        # every bit of what swinging it up wound up, which is what keeps single
+        # stepping over and over from turning into a crank
+        self.wound_up = max(0.0, self.wound_up + turned)
+
+        # Slower than this is an arm moving about rather than a crank. Hold on to
+        # the wind-up for a moment, in case the crank is only passing through a
+        # slow patch, and forget it once the turning has really stopped
+        if turned / elapsed < SPIN_MIN_DEGREES_PER_SECOND:
+            if now >= self.turning_until:
+                self.forget_turning()
+            return 0
+        self.turning_until = now + SPIN_TIMEOUT_SECONDS
+
+        # A crank has to get properly going before it steps anything
+        if self.wound_up < SPIN_MIN_DEGREES_TO_START:
+            return 0
+
+        self.spinning_until = now + SPIN_TIMEOUT_SECONDS
+        self.unspent += turned
+        steps = int(self.unspent / SPIN_DEGREES_PER_STEP)
+        self.unspent -= steps * SPIN_DEGREES_PER_STEP
+        return steps
+
 def main():
     global CAMERA_INDEX
     global SHOW_GRID_LINES
@@ -271,8 +414,9 @@ def main():
     interpreter_error = False
     interpreter_error_line = 0
     interpreter_error_char = 0
-    step_forward = False
-    step_back = False
+    # Steps the paused debugger owes: positive forwards, negative backwards
+    pending_steps = 0
+    forearm_spin = ForearmSpin()
     interpreter = Visualnterpreter()
     interpreter.step_interval_seconds = INTERPRETER_STEP_SECONDS
     interpreter.loop_step_interval_seconds = INTERPRETER_LOOP_STEP_SECONDS
@@ -319,26 +463,44 @@ def main():
                 if execute_code:
                     finished = False
                     interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
-                    if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and (step_forward or step_back)):
-                        complete_outout = None
+                    # The end of the program is the end. Stepping forwards stops at
+                    # the last character, so a crank that keeps turning after the
+                    # program ran out does not pile up steps to nowhere. Travelling
+                    # back in time is all that is left from here.
+                    if interpreter_finished_debug_and_print and pending_steps > 0:
+                        pending_steps = 0
+                    if not interpreter_paused and not interpreter_stopped and not interpreter_finished_debug_and_print and not pause or (interpreter_paused and pending_steps != 0):
+                        # A crank can be worth more than a single step per frame
                         if interpreter_paused:
-                            if step_forward:
-                                step_forward = False
+                            steps = abs(pending_steps)
+                            forwards = pending_steps > 0
+                        else:
+                            steps = 1
+                            forwards = True
+                        pending_steps = 0
+
+                        complete_outout = None
+                        for _ in range(steps):
+                            o = ''
+                            if not interpreter_paused:
+                                finished, remember, c, l, o = interpreter.step()
+                            elif forwards:
                                 finished, remember, c, l, o = interpreter.step(single_step=True)
-                            if step_back:
-                                step_back = False
+                            else:
                                 interpreter_finished_debug_and_print = False
                                 finished, remember, c, l, complete_outout = interpreter.step_back()
-                        else:
-                            finished, remember, c, l, o = interpreter.step()
-                        if o:
-                            code_output += o
 
-                        if complete_outout != None:
-                            code_output = complete_outout
-                        
-                        if remember:
-                            interpreter.history_append(code_output)
+                            if o:
+                                code_output += o
+
+                            if complete_outout != None:
+                                code_output = complete_outout
+
+                            if remember:
+                                interpreter.history_append(code_output)
+
+                            if finished:
+                                break
 
                         if finished:
                             # When resuming interpreting after stepping, make sure we not start from beginning after finishing
@@ -416,8 +578,22 @@ def main():
                     left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                     right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
 
+                    # Fast stepping: cranking the forearm around the elbow, having
+                    # first pointed the way, keeps the paused debugger stepping
+                    if execute_code and interpreter_paused:
+                        pending_steps += forearm_spin.update(landmarks, upper_arm, now) * forearm_spin.direction
+                    else:
+                        forearm_spin.disarm()
+
+                    # Cranking is a debugger gesture, not code input, so while it
+                    # lasts the rest of the command chain is deliberately skipped:
+                    # an arm swinging past the raise and duck poses neither types
+                    # anything nor draws a command on screen.
+                    if forearm_spin.is_spinning(now):
+                        pass
+
                     # Arms out, printing
-                    if elbows_straight and left_arm_horizonal and right_arm_horizonal:
+                    elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
                         if last_command != '.' and print_lock == 0: # Avoid triggering double .
                             print_lock = 1
                             last_command = '.'
@@ -428,19 +604,23 @@ def main():
                             # Print . a litle higher than other commands
                             cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
-                    # Stepping debugger forward/back
+                    # Stepping debugger forward/back, and arming the spin
                     elif interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
                         # Remberer that left and right are mirrored
                         if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
+                            if is_pointing(landmarks, 1):
+                                forearm_spin.arm(1)
                             if last_command == 'default' or last_command == '':
                                 last_command = '-->'
                                 command_started_at = now
-                                step_forward = True
+                                pending_steps = 1
                         elif elbow_right_straight and right_arm_horizonal and not (elbow_left_straight and left_arm_horizonal):
+                            if is_pointing(landmarks, -1):
+                                forearm_spin.arm(-1)
                             if last_command == 'default' or last_command == '':
                                 last_command = '<--'
                                 command_started_at = now
-                                step_back = True
+                                pending_steps = -1
 
                     # Double-up, not included in original spec
                     elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 

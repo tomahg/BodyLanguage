@@ -69,6 +69,7 @@ Notice the input is not implemented, neither by me nor Nikolaos Hanselmann
 -   Delete single character: Facepalming with your right hand. Implemented because humans make typos!
 -   Single step code intepreter when paused: Point to the right with a straight right arm.
 -	Single step back when paused: Point to the left with a straight right arm to travel back in time!
+-   Fast stepping when paused: Point, then keep the elbow out and crank the forearm around it, the way the hand points, for at least half a turn. The faster you crank, the faster the code steps.
 
 ### Running the program, and it's two modes
 
@@ -93,6 +94,7 @@ In the editor you can do the following
 -   Restart the code execution with a single clap, if it's execution has finished.
 -   Exit the interpreter (return to the editor) with a double clap.
 -   When the interpreter is paused (with a single clap), point to the right (straight arm) to run the code a single step forwards, point to the left (straigh arm) to run the code a single step backwards.
+-   When stepping one character at a time gets tedious, keep pointing, hold the elbow out to the side, and crank the forearm around the elbow like a handle. The code keeps stepping the way the hand points, and the faster you crank the faster it steps. Each arm has to turn the way it points – as if the hand rolled a wheel in that direction – so the right arm turns clockwise and the left arm counter-clockwise.
 
 In addition to this, the brave amongst you, can edit the code directly in the interpreter WHILE the code runs! Are you confident in your own coding skills to start executing the program you are halfway finished writing, knowing you will be able to finish your code before the interpreter catches up?
 
