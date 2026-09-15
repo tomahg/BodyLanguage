@@ -879,7 +879,7 @@ def main():
             if key != -1:
                 if key == ord('c') or key == ord('C'): #Toggle code view
                     show_code_lines = not show_code_lines
-                elif key == ord('f') or key == ord('F'): #Toggle facepalm overlay
+                elif key == ord('f') or key == ord('F'): #Toggle facepalm debugging overlay
                     show_facepalm_overlay = not show_facepalm_overlay
                 elif key == ord('g') or key == ord('G'): #Toggle grid
                     SHOW_GRID_LINES = not SHOW_GRID_LINES
@@ -888,6 +888,11 @@ def main():
                     if code == '':
                         competition_end_time = None
                 elif key == 3014656 or key == 2555904: #Clear code (delete key or right arrow / clicker)
+                    # Toggle grid lines
+                    if len(code) == 0 and SHOW_GRID_LINES == False:
+                        SHOW_GRID_LINES = True
+                    else:
+                        SHOW_GRID_LINES = False
                     code = ''
                     code_output = ''
                     execute_code = False
