@@ -47,6 +47,14 @@ CLAP_DOUBLE_DISPLAY_SECONDS = 0.5
 INTERPRETER_STEP_SECONDS = 0.15
 INTERPRETER_LOOP_STEP_SECONDS = 0.05
 
+# --- Pose model ------------------------------------------------------------
+# The landmarker runs on every single frame, so this is the biggest lever there
+# is on the frame rate, and the frame rate is what decides how smooth the whole
+# thing looks. 'lite' is fastest and shakiest, 'heavy' steadiest but far too
+# slow to hold a frame rate, 'full' sits between them and is the one measured
+# to keep up: about 34ms a frame against 142ms for heavy.
+POSE_MODEL = 'full'  # 'lite', 'full' or 'heavy'
+
 # Fast stepping in the paused debugger: after pointing, the forearm is cranked
 # around the elbow to keep stepping the way the hand points.
 
@@ -106,7 +114,12 @@ COMPETITION_MODE = False
 COMPETITION_WORD = 'NDC'
 CAMERA_INDEX = 1
 
-_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'annotator', 'pose_landmarker.task')
+_MODEL_FILES = {
+    'lite': 'pose_landmarker_lite.task',
+    'full': 'pose_landmarker_full.task',
+    'heavy': 'pose_landmarker.task',
+}
+_MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'annotator', _MODEL_FILES[POSE_MODEL])
 
 _FACE_LANDMARK_INDICES = {
     mp_vision.PoseLandmark.LEFT_EYE.value,
@@ -127,7 +140,11 @@ class PoseDetector():
     def __init__(self, detectionCon=0.5, trackCon=0.5):
         options = mp_vision.PoseLandmarkerOptions(
             base_options=mp_tasks.BaseOptions(model_asset_path=_MODEL_PATH),
-            running_mode=mp_vision.RunningMode.IMAGE,
+            # VIDEO rather than IMAGE: the landmarker tracks the pose from one
+            # frame to the next, so the expensive detector stage only runs
+            # again when tracking is lost. IMAGE mode redetects from scratch
+            # every single frame, which is most of what a frame costs.
+            running_mode=mp_vision.RunningMode.VIDEO,
             num_poses=1,
             min_pose_detection_confidence=detectionCon,
             min_tracking_confidence=trackCon,
@@ -135,11 +152,17 @@ class PoseDetector():
         self.pose = mp_vision.PoseLandmarker.create_from_options(options)
         self._connections = mp_vision.PoseLandmarksConnections.POSE_LANDMARKS
         self.detection_result = None
+        # VIDEO mode wants timestamps that never stand still or go backwards
+        self.last_timestamp_ms = -1
 
     def process(self, img, draw=True):
         imgRGB = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.ascontiguousarray(imgRGB))
-        self.detection_result = self.pose.detect(mp_image)
+        timestamp_ms = int(time.perf_counter() * 1000)
+        if timestamp_ms <= self.last_timestamp_ms:
+            timestamp_ms = self.last_timestamp_ms + 1
+        self.last_timestamp_ms = timestamp_ms
+        self.detection_result = self.pose.detect_for_video(mp_image, timestamp_ms)
 
         if self.detection_result.pose_landmarks and draw:
             pose_landmarks = self.detection_result.pose_landmarks[0]
