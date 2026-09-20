@@ -35,6 +35,11 @@ BRACKET_HOLD_SECONDS = 1.0
 # opens. Long enough that an arm sweeping past the pose is not mistaken for it.
 CROSSED_ARMS_HOLD_SECONDS = 1.0
 
+# How long a single outstretched arm has to be held still before it steps the
+# debugger. Every raised arm passes through the outstretched pose on its way up,
+# so without this a + or a . would step the code, or shift the caret, first.
+STEP_HOLD_SECONDS = 0.2
+
 # Recognising a clap: once the arms are spread wide, the hands have this long
 # to meet, or the gesture is discarded.
 CLAP_HANDS_TOGETHER_SECONDS = 1.25
@@ -373,15 +378,34 @@ def caret_line_and_char(caret, offsets, lines, starts):
     char_number = min(formatted_index - starts[line_number], len(lines[line_number]))
     return char_number, line_number
 
-def caret_from_code_pointer(char_number, line_number, offsets, lines, starts):
-    # The highlighted command is the one that has just run, so the caret goes
-    # right after it: exactly where execution would have carried on
+def code_pointer_to_raw(char_number, line_number, offsets, lines, starts):
+    # Which command in the raw code the interpreter is standing on, given where
+    # it is on screen. Below zero means it has not run anything yet, and the
+    # length of the code means it has run off the end.
     if char_number == None or line_number == None:
-        return 0
-    if line_number < 0 or line_number >= len(lines):
-        return 0
-    formatted_index = starts[line_number] + min(char_number, len(lines[line_number]) - 1) + 1
+        return -1
+    if char_number < 0 or line_number < 0 or line_number >= len(lines):
+        return -1
+    formatted_index = starts[line_number] + min(char_number, len(lines[line_number]))
     return min(bisect.bisect_left(offsets, formatted_index), len(offsets) - 1)
+
+def raw_to_code_pointer(raw, offsets, lines, starts):
+    # And back again, once editing has moved the commands about
+    if raw < 0 or len(lines) == 0:
+        return -1, 0
+    if raw >= len(offsets) - 1:
+        # Off the end of the code, where a program that has run to its end stands
+        return len(lines[-1]), len(lines) - 1
+    return caret_line_and_char(raw, offsets, lines, starts)
+
+def shift_position(position, edited_at, moved):
+    # Where a remembered position ends up after an edit. Anything in front of
+    # the edit stays where it is; everything from the edit onwards is dragged
+    # along by however many commands were added or taken away. A command deleted
+    # from under a position leaves that position on the command before it.
+    if position < edited_at:
+        return position
+    return position + moved
 
 def insert_at_caret(code, caret, command):
     # Outside insert mode the caret is pinned to the end of the code, so this is
@@ -562,6 +586,16 @@ def main():
     insert_mode = False
     lines_of_code = []
     line_starts = []
+    # While insert mode is open, where the interpreter stands in the code, and
+    # every position it remembers for travelling back in time, are held as
+    # positions in the raw code, so that editing can move them along with the
+    # commands they point at
+    pointer_raw = -1
+    history_raw = []
+    code_before_edit = ''
+    # Where the highlighted command is, kept between frames because the
+    # interpreter only reports it on the frames it actually steps
+    c, l = 0, 0
 
     clap_count = 0
     clap_display_count = 0
@@ -621,6 +655,18 @@ def main():
                 h, w, _ = frame.shape
                 THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
                 THRESHOLD_RIGHT_X = THRESHOLD_EDGE
+
+                # An edit moves every command after it along, so the place the
+                # interpreter stands in the code, and every place it remembers,
+                # have to move too, or they end up pointing at the wrong command.
+                # Only one command is ever inserted or deleted at a time, which
+                # is enough to work out where the edit happened from the caret.
+                if insert_mode and code != code_before_edit:
+                    moved = len(code) - len(code_before_edit)
+                    edited_at = caret - moved if moved > 0 else caret
+                    pointer_raw = shift_position(pointer_raw, edited_at, moved)
+                    history_raw = [shift_position(p, edited_at, moved) for p in history_raw]
+                code_before_edit = code
 
                 # The formatting is worked out fresh from the raw code every
                 # frame, so a command inserted into the middle of a long run of
@@ -748,6 +794,11 @@ def main():
                     # Arms horizontal, less then half an upper arm off
                     left_arm_horizonal = abs(landmarks[PoseLandmark.LEFT_SHOULDER][2] - landmarks[PoseLandmark.LEFT_WRIST][2]) < half_upper_arm
                     right_arm_horizonal = abs(landmarks[PoseLandmark.RIGHT_SHOULDER][2] - landmarks[PoseLandmark.RIGHT_WRIST][2]) < half_upper_arm
+                    # Hanging down, rather than merely not horizontal yet. The
+                    # other arm has to be out of the way for a step to count,
+                    # so raising both arms together never steps on the way up
+                    left_arm_down = landmarks[PoseLandmark.LEFT_WRIST][2] > landmarks[PoseLandmark.LEFT_SHOULDER][2] + half_upper_arm
+                    right_arm_down = landmarks[PoseLandmark.RIGHT_WRIST][2] > landmarks[PoseLandmark.RIGHT_SHOULDER][2] + half_upper_arm
 
                     # Fast stepping: cranking the forearm around the elbow, having
                     # first pointed the way, keeps the paused debugger stepping
@@ -779,11 +830,17 @@ def main():
                             pending_steps = 0
                             forearm_spin.disarm()
                             if execute_code:
+                                pointer_raw = code_pointer_to_raw(interpreter.code_pointer_char, interpreter.code_pointer_line, caret_offsets, lines_of_code, line_starts)
+                                history_raw = [code_pointer_to_raw(char, line, caret_offsets, lines_of_code, line_starts)
+                                               for _, _, char, line, _, _, _ in interpreter.history]
                                 # The highlighted command has just run, so the
                                 # caret goes right after it
-                                caret = caret_from_code_pointer(interpreter.code_pointer_char, interpreter.code_pointer_line, caret_offsets, lines_of_code, line_starts)
+                                caret = min(pointer_raw + 1, len(code))
                             else:
+                                pointer_raw = -1
+                                history_raw = []
                                 caret = len(code)
+                            code_before_edit = code
 
                     # Arms out, printing
                     elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
@@ -797,22 +854,29 @@ def main():
                             # Print . a litle higher than other commands
                             cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
-                    # Stepping debugger forward/back, and arming the spin
-                    elif (insert_mode or interpreter_paused) and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
+                    # Stepping debugger forward/back, and arming the spin.
+                    # The pose has to be held for a moment, and the other arm
+                    # kept down, because an arm on its way up to a + or a .
+                    # sweeps straight through it and would otherwise step first
+                    elif (insert_mode or interpreter_paused) and ((elbow_left_straight and left_arm_horizonal and right_arm_down) or (elbow_right_straight and right_arm_horizonal and left_arm_down)):
                         # Remberer that left and right are mirrored
-                        if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
+                        if elbow_left_straight and left_arm_horizonal and right_arm_down:
                             if is_pointing(landmarks, 1):
                                 forearm_spin.arm(1)
                             if last_command == 'default' or last_command == '':
                                 last_command = '-->'
                                 command_started_at = now
+                            if last_command == '-->' and now - command_started_at >= STEP_HOLD_SECONDS:
+                                last_command = 'stepped'
                                 pending_steps = 1
-                        elif elbow_right_straight and right_arm_horizonal and not (elbow_left_straight and left_arm_horizonal):
+                        elif elbow_right_straight and right_arm_horizonal and left_arm_down:
                             if is_pointing(landmarks, -1):
                                 forearm_spin.arm(-1)
                             if last_command == 'default' or last_command == '':
                                 last_command = '<--'
                                 command_started_at = now
+                            if last_command == '<--' and now - command_started_at >= STEP_HOLD_SECONDS:
+                                last_command = 'stepped'
                                 pending_steps = -1
 
                     # Double-up, not included in original spec
@@ -1001,23 +1065,28 @@ def main():
                                     # fires, and a second clap arriving right
                                     # after starts a new sequence rather than
                                     # completing a double clap and wiping the
-                                    # code that was just edited.
-                                    # Nothing of the run survives an edit, so it
-                                    # is cleared rather than carried back.
+                                    # code that was just edited
                                     insert_mode = False
                                     caret = len(code)
-                                    execute_code = False
-                                    code_output = ''
-                                    interpreter_paused = False
-                                    interpreter_stopped = False
-                                    interpreter_finished_debug_and_print = False
-                                    interpreter_error = False
                                     pending_steps = 0
                                     forearm_spin.disarm()
-                                    interpreter.prepare_code()
-                                    interpreter.view_top = 0
                                     clap_count = 0
                                     clap_stage = ''
+                                    if execute_code:
+                                        # Back to the interpreter, standing on
+                                        # the same command, still paused, with
+                                        # the cells and the output it had. The
+                                        # edit shuffled the code about, so every
+                                        # remembered position is put back where
+                                        # the command it points at ended up.
+                                        c, l = raw_to_code_pointer(pointer_raw, caret_offsets, lines_of_code, line_starts)
+                                        interpreter.code_pointer_char = c
+                                        interpreter.code_pointer_line = l
+                                        interpreter.history = [
+                                            (finished_then, remember, *raw_to_code_pointer(position, caret_offsets, lines_of_code, line_starts), pointer, cells, out)
+                                            for (finished_then, remember, _, _, pointer, cells, out), position
+                                            in zip(interpreter.history, history_raw)]
+                                        interpreter_paused = True
                                 # Pause / resume debugger immediately, without waiting for potential second clap
                                 elif execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
                                     if interpreter_paused:

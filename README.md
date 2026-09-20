@@ -113,7 +113,7 @@ In insert mode
 -   Any command gesture inserts that command at the caret. Groups of five +'es and -'es are re-counted around it, so a + dropped into the middle of a long run still reads correctly.
 -   Facepalm deletes the character in front of the caret, and the caret follows it back.
 -   Point to the right or to the left to move the caret one command that way, and crank the forearm to move it faster – the same gestures that step the code, except that here nothing is executed. The caret goes all the way to the front, so code can be inserted before the very first character.
--   Clap once to leave. You land back in the code editor, and the run is gone: cells cleared, output cleared, back to the start. Clap again to run the edited program.
+-   Clap once to leave, and you are back where you came from. Coming from the interpreter you land on the same command, still paused, with the same cells and the same output – so a typo can be fixed halfway through a run and the run carried on. Coming from the editor you simply land back in the editor.
 
 
 #### Keyboard commands
