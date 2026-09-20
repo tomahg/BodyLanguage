@@ -1,4 +1,4 @@
-# Gesture controlled brainfuck interpreter
+# Bodyfuck – Gesture controlled brainfuck interpreter
 
 #### Introduction
 
@@ -34,7 +34,7 @@ That's all there is to say about [brainfuck](https://esolangs.org/wiki/Brainfuck
 
 ##### What is bodyfuck
 
-Bodyfuck is a gestural extension of brainfuck, created by Nikolaos Hanselmann in 2009. Based on a YouTube video that demonstrates his usage, and a few articles I have recreated an interpreter for this very strange language.
+Bodyfuck is a gestural extension of brainfuck, created by [Nikolaos Hanselmann in 2009](https://sophia.ooo/projects/bodyfuck/). Based on a YouTube video that demonstrates his usage, and a few articles I have recreated an interpreter for this very strange language.
 
 That's all there is to say about [bodyfuck](https://esolangs.org/wiki/Bodyfuck).
 
