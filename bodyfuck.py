@@ -1,5 +1,6 @@
 from Interpreter import Visualnterpreter
 from DrawUtils import SpeechBubble
+import bisect
 import cv2
 import datetime
 import json
@@ -29,6 +30,10 @@ COMMAND_OVERLAY_DELAY_SECONDS = 0.0
 
 # How long to stay at the edge of the frame before < becomes [ (and > becomes ]).
 BRACKET_HOLD_SECONDS = 1.0
+
+# How long the arms have to stay folded across the chest before insert mode
+# opens. Long enough that an arm sweeping past the pose is not mistaken for it.
+CROSSED_ARMS_HOLD_SECONDS = 1.0
 
 # Recognising a clap: once the arms are spread wide, the hands have this long
 # to meet, or the gesture is discarded.
@@ -297,11 +302,140 @@ def angle_difference(previous, current):
     # Signed degrees from one angle to the next, the short way around
     return (current - previous + 180.0) % 360.0 - 180.0
 
-def delete_last_command(code):
-    # The spaces that break up more than five + or - are formatting,
-    # not commands, so a single delete takes the space along with the command
-    # in front of it. Otherwise deleting reads as if nothing happened.
-    return code[:-1].rstrip(' ')
+# The code is kept as the bare stream of commands, with no formatting in it at
+# all. Everything below turns that raw code into what ends up on screen, and
+# maps positions back and forth between the two.
+
+def format_code(raw):
+    # Five consecutive + or - are broken up with a space, so a long run can be
+    # counted in groups of five rather than one character at a time.
+    # Returns the formatted code, and where every position in the raw code ends
+    # up in it. The map has one entry more than the code, so the very end of the
+    # code has a position too.
+    formatted = []
+    offsets = []
+    run_command = ''
+    run_length = 0
+    for command in raw:
+        if command in '+-' and command == run_command:
+            run_length += 1
+            if run_length % 5 == 1:
+                formatted.append(' ')
+        else:
+            run_command = command if command in '+-' else ''
+            run_length = 1
+        # The caret belongs in front of the command, past any space that was
+        # just added, so that a space falling on a line break keeps the caret
+        # with the command rather than stranding it on the line above
+        offsets.append(len(formatted))
+        formatted.append(command)
+    offsets.append(len(formatted))
+    return ''.join(formatted), offsets
+
+def wrap_code(formatted, max_width):
+    # Break the formatted code into lines that fit the frame, and remember where
+    # each line starts, so a position in the code can be found again on screen
+    lines = []
+    starts = []
+    consumed = 0
+    left_to_print = formatted
+    while len(left_to_print) > 0:
+        if len(left_to_print) > MIN_CHARS_PER_LINE:
+            char_count = MIN_CHARS_PER_LINE
+            line_width = get_text_width(left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
+            while line_width < max_width and char_count < len(left_to_print):
+                char_count += 1
+                line_width = get_text_width(left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
+            if line_width > max_width:
+                char_count -= 1
+            if char_count > len(left_to_print):
+                char_count = len(left_to_print)
+        else:
+            char_count = len(left_to_print)
+        line = left_to_print[:char_count]
+        # A formatting space landing on a line break is not drawn, so the line
+        # starts at the first command after it
+        starts.append(consumed + len(line) - len(line.lstrip(' ')))
+        lines.append(line.strip())
+        consumed += char_count
+        left_to_print = left_to_print[char_count:]
+    return lines, starts
+
+def caret_line_and_char(caret, offsets, lines, starts):
+    # Where on screen the caret stands: in front of the command it points at,
+    # which puts it at the start of the next line when that command begins one
+    if len(lines) == 0:
+        return 0, 0
+    formatted_index = offsets[caret]
+    line_number = bisect.bisect_right(starts, formatted_index) - 1
+    if line_number < 0:
+        line_number = 0
+    char_number = min(formatted_index - starts[line_number], len(lines[line_number]))
+    return char_number, line_number
+
+def caret_from_code_pointer(char_number, line_number, offsets, lines, starts):
+    # The highlighted command is the one that has just run, so the caret goes
+    # right after it: exactly where execution would have carried on
+    if char_number == None or line_number == None:
+        return 0
+    if line_number < 0 or line_number >= len(lines):
+        return 0
+    formatted_index = starts[line_number] + min(char_number, len(lines[line_number]) - 1) + 1
+    return min(bisect.bisect_left(offsets, formatted_index), len(offsets) - 1)
+
+def insert_at_caret(code, caret, command):
+    # Outside insert mode the caret is pinned to the end of the code, so this is
+    # the plain append it has always been
+    return code[:caret] + command + code[caret:], caret + len(command)
+
+def delete_before_caret(code, caret):
+    # Backspace: the command in front of the caret goes, and the caret follows
+    # it. Formatting is not part of the code any more, so there is nothing left
+    # to tidy up afterwards.
+    if caret <= 0:
+        return code, caret
+    return code[:caret - 1] + code[caret:], caret - 1
+
+def is_arms_crossed(landmarks, elbow_left, elbow_right):
+    # Both arms folded across the chest: the way into insert mode.
+    #
+    # The fold is recognised from the arms themselves, not from where the hands
+    # land on the body. How far the hands reach is a matter of how tightly the
+    # arms are folded, and a comfortable fold often gets no further than the
+    # opposite forearm, nowhere near the opposite shoulder.
+    left_shoulder = landmarks[PoseLandmark.LEFT_SHOULDER]
+    right_shoulder = landmarks[PoseLandmark.RIGHT_SHOULDER]
+    left_elbow = landmarks[PoseLandmark.LEFT_ELBOW]
+    right_elbow = landmarks[PoseLandmark.RIGHT_ELBOW]
+    left_wrist = landmarks[PoseLandmark.LEFT_WRIST]
+    right_wrist = landmarks[PoseLandmark.RIGHT_WRIST]
+
+    upper_arm = (math.hypot(left_shoulder[1] - left_elbow[1], left_shoulder[2] - left_elbow[2]) +
+                 math.hypot(right_shoulder[1] - right_elbow[1], right_shoulder[2] - right_elbow[2])) / 2
+    slack = upper_arm / 2
+
+    # Remember that left and right are mirrored: the left landmarks sit on the
+    # right of the screen, so crossed simply means the hands have traded places.
+    # Only by a hand's worth is asked for, wherever on the chest that happens.
+    swapped = right_wrist[1] - left_wrist[1] > upper_arm / 4
+
+    # Roughly chest height: below the shoulders and above the hips, with room
+    # for a fold carried a little high or a little low
+    shoulders = min(left_shoulder[2], right_shoulder[2]) - slack
+    hips = max(landmarks[PoseLandmark.LEFT_HIP][2], landmarks[PoseLandmark.RIGHT_HIP][2]) + slack
+    chest_height = shoulders < left_wrist[2] < hips and shoulders < right_wrist[2] < hips
+
+    # Forearms lying across the body rather than raised. A clap brings the hands
+    # together with the wrists up above the elbows, a fold never does, and that
+    # is what keeps the two gestures apart now that the hands may meet anywhere.
+    raised = upper_arm / 3
+    forearms_down = (left_wrist[2] > left_elbow[2] - raised and
+                     right_wrist[2] > right_elbow[2] - raised)
+
+    # Folded, not stretched out
+    elbows_bent = elbow_left < 130 and elbow_right < 130
+
+    return swapped and chest_height and forearms_down and elbows_bent
 
 class ForearmSpin:
     """Keeps the paused debugger stepping while a forearm is cranked around the elbow.
@@ -421,10 +555,16 @@ def main():
 
     last_command = ''
     command_started_at = time.perf_counter()
+    # The code is the bare command stream. The caret says where the next command
+    # goes: pinned to the end of the code, until insert mode sets it loose.
     code = ''
+    caret = 0
+    insert_mode = False
     lines_of_code = []
+    line_starts = []
 
     clap_count = 0
+    clap_display_count = 0
     clap_stage = ''
     clap_hands_together_deadline = 0.0
     clap_display_until = 0.0
@@ -482,14 +622,49 @@ def main():
                 THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
                 THRESHOLD_RIGHT_X = THRESHOLD_EDGE
 
+                # The formatting is worked out fresh from the raw code every
+                # frame, so a command inserted into the middle of a long run of
+                # + regroups the whole run without anyone having to think about it
+                formatted_code, caret_offsets = format_code(code)
+                if insert_mode and pending_steps != 0:
+                    # Pointing and cranking move the caret through the code in
+                    # insert mode, rather than running it
+                    caret += pending_steps
+                    pending_steps = 0
+                caret = max(0, min(caret, len(code)))
+
+                if show_code_lines:
+                    lines_of_code, line_starts = wrap_code(formatted_code, w - HORIZONTAL_MARGIN)
+                    code_changed = lines_of_code != interpreter.code
+                    interpreter.input_code(lines_of_code)
+
+                    if code_changed:
+                        ok, (interpreter_error_line, interpreter_error_char) = interpreter.build_jumpmap()
+                        if ok:
+                            interpreter_error = False
+                        interpreter_paused = not ok
+                        if interpreter_paused:
+                            interpreter_error = True
+
                 if SHOW_GRID_LINES:
                     cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
                     cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)
                     cv2.line(frame, (0, THRESHOLD_DUCK_Y), (w, THRESHOLD_DUCK_Y), (111,111,111), 2)
                 # w = 640
                 # h = 480
-                if execute_code:
+                if insert_mode:
+                    # Nothing runs while the caret is out, so nothing of the
+                    # interpreter is shown either: no cells, no output, no
+                    # highlighted command. Only the code, and the caret in it.
+                    if show_code_lines:
+                        caret_char, caret_line = caret_line_and_char(caret, caret_offsets, lines_of_code, line_starts)
+                        interpreter.scroll_into_view(caret_line)
+                        interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)), minimum_lines = 1)
+                        interpreter.draw_caret(frame, caret_char, caret_line, (int(HORIZONTAL_MARGIN / 2)))
+
+                elif execute_code:
                     finished = False
+                    interpreter.scroll_into_view(interpreter.code_pointer_line)
                     interpreter.debug_lines_of_code(frame, (int(HORIZONTAL_MARGIN / 2)))
                     # The end of the program is the end. Stepping forwards stops at
                     # the last character, so a crank that keeps turning after the
@@ -551,39 +726,8 @@ def main():
                     elif pause or (not finished and not interpreter_stopped and not interpreter_finished_debug_and_print):
                         interpreter.highlight_debug_command(frame, c, l, (int(HORIZONTAL_MARGIN / 2)))                        
 
-                if show_code_lines:
-                    lines_of_code = []
-                    code_left_to_print = code.strip()
-                    while len(code_left_to_print) > 0:
-                        if len(code_left_to_print) > MIN_CHARS_PER_LINE:
-                            char_count = MIN_CHARS_PER_LINE
-                            line_width = get_text_width(code_left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
-                            while line_width < w - HORIZONTAL_MARGIN and char_count < len(code_left_to_print):
-                                char_count += 1
-                                line_width = get_text_width(code_left_to_print[:char_count], cv2.FONT_HERSHEY_PLAIN, 2, 2)
-                            if line_width > w - HORIZONTAL_MARGIN:
-                                char_count -= 1
-                            if char_count > len(code_left_to_print):
-                                char_count = len(code_left_to_print)
-                            lines_of_code.append(code_left_to_print[:char_count].strip()) 
-                            code_left_to_print = code_left_to_print[char_count:]
-                        else:
-                            lines_of_code.append(code_left_to_print.strip())
-                            code_left_to_print = ''
-
-                    code_changed = lines_of_code != interpreter.code
-                    interpreter.input_code(lines_of_code)
-
-                    if code_changed:
-                        ok, (interpreter_error_line, interpreter_error_char) = interpreter.build_jumpmap()
-                        if ok:
-                            interpreter_error = False
-                        interpreter_paused = not ok
-                        if interpreter_paused:
-                            interpreter_error = True
-
-                    if not execute_code:
-                        interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
+                elif show_code_lines:
+                    interpreter.print_lines_of_code(frame, MAX_LINES_OF_CODE, (int(HORIZONTAL_MARGIN / 2)))
 
                 if len(landmarks) and not pause:
                     elbow_l = detector.find_angle(PoseLandmark.LEFT_SHOULDER, PoseLandmark.LEFT_ELBOW, PoseLandmark.LEFT_WRIST)
@@ -607,7 +751,7 @@ def main():
 
                     # Fast stepping: cranking the forearm around the elbow, having
                     # first pointed the way, keeps the paused debugger stepping
-                    if execute_code and interpreter_paused:
+                    if insert_mode or (execute_code and interpreter_paused):
                         pending_steps += forearm_spin.update(landmarks, upper_arm, now) * forearm_spin.direction
                     else:
                         forearm_spin.disarm()
@@ -619,12 +763,34 @@ def main():
                     if forearm_spin.is_spinning(now):
                         pass
 
+                    # Arms folded across the chest, opening insert mode, where
+                    # commands land at the caret instead of at the end of the
+                    # code. Checked before anything else, so a mode switch is
+                    # never mistaken for a command.
+                    elif is_arms_crossed(landmarks, elbow_l, elbow_r):
+                        if last_command != 'insert':
+                            last_command = 'insert'
+                            command_started_at = now
+                        held_seconds = now - command_started_at
+                        # Only from a standstill: clap to stop the code first
+                        can_enter = not execute_code or interpreter_paused
+                        if can_enter and not insert_mode and held_seconds > CROSSED_ARMS_HOLD_SECONDS:
+                            insert_mode = True
+                            pending_steps = 0
+                            forearm_spin.disarm()
+                            if execute_code:
+                                # The highlighted command has just run, so the
+                                # caret goes right after it
+                                caret = caret_from_code_pointer(interpreter.code_pointer_char, interpreter.code_pointer_line, caret_offsets, lines_of_code, line_starts)
+                            else:
+                                caret = len(code)
+
                     # Arms out, printing
                     elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
                         if last_command != '.' and print_lock == 0: # Avoid triggering double .
                             print_lock = 1
                             last_command = '.'
-                            code += last_command
+                            code, caret = insert_at_caret(code, caret, last_command)
                             command_started_at = now
                         if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
@@ -632,7 +798,7 @@ def main():
                             cv2.putText(frame, '.', (280+15, 200-30), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE, (0,0,255), FONT_WEIGHT)
 
                     # Stepping debugger forward/back, and arming the spin
-                    elif interpreter_paused and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
+                    elif (insert_mode or interpreter_paused) and ((elbow_left_straight and left_arm_horizonal) or (elbow_right_straight and right_arm_horizonal)):
                         # Remberer that left and right are mirrored
                         if elbow_left_straight and left_arm_horizonal and not (elbow_right_straight and right_arm_horizonal):
                             if is_pointing(landmarks, 1):
@@ -653,18 +819,10 @@ def main():
                     elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
                         if last_command == '+': # Upgrading directly from + to ++, should yield a total of ++ not +++
                             last_command = '++'
-                            if code.endswith('+++++'):
-                                code += ' +'
-                            else:
-                                code += '+'
+                            code, caret = insert_at_caret(code, caret, '+')
                         elif last_command != '++':
                             last_command = '++'
-                            if code.endswith('+++++'):
-                                code += ' ++'
-                            elif code.endswith('++++'):
-                                code += '+ +'
-                            else:
-                                code += last_command
+                            code, caret = insert_at_caret(code, caret, '++')
                             command_started_at = now
                         if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 145, 95, 110, 355)
@@ -677,10 +835,7 @@ def main():
                         # triggered when not lowering both arms exacly at the same time
                         if last_command != '+' and last_command != '++':
                             last_command = '+'
-                            if code.endswith('+++++'):
-                                code += ' ' + last_command
-                            else:
-                                code += last_command
+                            code, caret = insert_at_caret(code, caret, last_command)
                             command_started_at = now
 
                         if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
@@ -695,10 +850,7 @@ def main():
                     elif landmarks[PoseLandmark.LEFT_SHOULDER][2] > THRESHOLD_DUCK_Y and landmarks[PoseLandmark.RIGHT_SHOULDER][2] > THRESHOLD_DUCK_Y: 
                         if last_command != '-':
                             last_command = '-'
-                            if code.endswith('-----'):
-                                code += ' ' + last_command
-                            else:
-                                code += last_command
+                            code, caret = insert_at_caret(code, caret, last_command)
                             command_started_at = now
                         if now - command_started_at >= COMMAND_OVERLAY_DELAY_SECONDS:
                             draw_white_apha_box(frame, 260, 95, 110, 120)
@@ -716,7 +868,7 @@ def main():
                         if held_seconds > BRACKET_HOLD_SECONDS:
                             if last_command != '[':
                                 last_command = '['
-                                code += last_command
+                                code, caret = insert_at_caret(code, caret, last_command)
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             # [ is strangely large, print it a little smaller, and further up, than other commands
                             cv2.putText(frame, '[', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -733,7 +885,7 @@ def main():
                         if held_seconds > BRACKET_HOLD_SECONDS:
                             if last_command != ']':
                                 last_command = ']'
-                                code += last_command
+                                code, caret = insert_at_caret(code, caret, last_command)
                             draw_white_apha_box(frame, 260, 95, 110, 120)
                             # ] is strangely large, print it a little smaller, and further up, than other commands
                             cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
@@ -746,14 +898,14 @@ def main():
                             if facepalm_lock == 0:
                                 facepalm_lock = 1
                                 command_started_at = now
-                                code = delete_last_command(code)
+                                code, caret = delete_before_caret(code, caret)
                             last_command = '⌫'
                         bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
                         bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
                         speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
                     else:
                         if last_command in ['<','>']:
-                            code += last_command
+                            code, caret = insert_at_caret(code, caret, last_command)
                         last_command = ''
                         command_started_at = now
 
@@ -771,10 +923,10 @@ def main():
                                 
                         if clap_print1 == 1 or clap_print2 == 1:
                             if now < clap_display_until:
-                                if clap_count >= 2:
+                                if clap_display_count >= 2:
                                     draw_white_apha_box(frame, 120, 95, 110, 400)
                                     cv2.putText(frame, 'Clap! Clap!', (150, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
-                                elif clap_count == 1:
+                                elif clap_display_count == 1:
                                     draw_white_apha_box(frame, 200-10, 95, 110, 220)
                                     cv2.putText(frame, 'Clap!', (225, 180), cv2.FONT_HERSHEY_PLAIN, 4, (0,0,255), FONT_WEIGHT)
                             else:
@@ -827,6 +979,7 @@ def main():
                             if clap_print2 == 0:
                                 clap_display_until = now + CLAP_DOUBLE_DISPLAY_SECONDS
                                 clap_print2 = 1
+                                clap_display_count = 2
                                 # If interpreter is running: stop it
                                 # Otherwise clear code buffer
                                 if execute_code:
@@ -834,14 +987,39 @@ def main():
                                     interpreter_paused = False
                                 else:
                                     code = ''
+                                    caret = 0
                                     code_output = ''
                                     competition_end_time = None                 
                         elif clap_count == 1:
                             if clap_print1 == 0:
                                 clap_display_until = now + CLAP_SINGLE_DISPLAY_SECONDS
                                 clap_print1 = 1
+                                clap_display_count = 1
+                                if insert_mode:
+                                    # Leaving insert mode eats the whole clap
+                                    # sequence: the deferred start below never
+                                    # fires, and a second clap arriving right
+                                    # after starts a new sequence rather than
+                                    # completing a double clap and wiping the
+                                    # code that was just edited.
+                                    # Nothing of the run survives an edit, so it
+                                    # is cleared rather than carried back.
+                                    insert_mode = False
+                                    caret = len(code)
+                                    execute_code = False
+                                    code_output = ''
+                                    interpreter_paused = False
+                                    interpreter_stopped = False
+                                    interpreter_finished_debug_and_print = False
+                                    interpreter_error = False
+                                    pending_steps = 0
+                                    forearm_spin.disarm()
+                                    interpreter.prepare_code()
+                                    interpreter.view_top = 0
+                                    clap_count = 0
+                                    clap_stage = ''
                                 # Pause / resume debugger immediately, without waiting for potential second clap
-                                if execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
+                                elif execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
                                     if interpreter_paused:
                                         interpreter_paused = False
                                     else:
@@ -884,7 +1062,7 @@ def main():
                 elif key == ord('g') or key == ord('G'): #Toggle grid
                     SHOW_GRID_LINES = not SHOW_GRID_LINES
                 elif key == 8: #Backspace
-                    code = delete_last_command(code)
+                    code, caret = delete_before_caret(code, caret)
                     if code == '':
                         competition_end_time = None
                 elif key == 3014656 or key == 2555904: #Clear code (delete key or right arrow / clicker)
@@ -894,6 +1072,8 @@ def main():
                     else:
                         SHOW_GRID_LINES = False
                     code = ''
+                    caret = 0
+                    insert_mode = False
                     code_output = ''
                     execute_code = False
                     interpreter_paused = False

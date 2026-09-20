@@ -70,6 +70,7 @@ Notice the input is not implemented, neither by me nor Nikolaos Hanselmann
 -   Single step code intepreter when paused: Point to the right with a straight right arm.
 -	Single step back when paused: Point to the left with a straight right arm to travel back in time!
 -   Fast stepping when paused: Point, then keep the elbow out and crank the forearm around it, the way the hand points, for at least half a turn. The faster you crank, the faster the code steps.
+-   Insert mode: Fold your arms across your chest and hold it for a second. Implemented because the original language can only ever add code to the very end, so a single missing character in the middle means typing the whole program again.
 
 ### Running the program, and it's two modes
 
@@ -83,6 +84,7 @@ In the editor you can do the following
 -   Delete last character with the facepalm gesture.
 -   Delete all code with the double clap.
 -   Enter the interpreter with the single clap.
+-   Open insert mode, to add or remove code somewhere other than at the end, by folding your arms across your chest for a second.
 
 #### The interpreter
 
@@ -99,6 +101,20 @@ In the editor you can do the following
 In addition to this, the brave amongst you, can edit the code directly in the interpreter WHILE the code runs! Are you confident in your own coding skills to start executing the program you are halfway finished writing, knowing you will be able to finish your code before the interpreter catches up?
 
 Note: When live coding, the interpreter will halt if your code contains incomplete loops. I.e. an \[ without a matching \], or the other way around.
+
+#### Insert mode
+
+Everything above adds code to the end of the program, which is all the original bodyfuck can do. One wrong character halfway through, and there was nothing for it but to start over. Insert mode puts a caret in the code instead, and commands land there.
+
+Stop where you want to work: clap to pause the running code, then step to the exact character with the pointing gesture, or crank the forearm to travel further. Fold your arms across your chest, hold it for a second, and insert mode opens. A green caret appears, standing just after the character that ran last, and the highlighted command, the cells and the output all disappear – nothing runs while you are editing.
+
+In insert mode
+
+-   Any command gesture inserts that command at the caret. Groups of five +'es and -'es are re-counted around it, so a + dropped into the middle of a long run still reads correctly.
+-   Facepalm deletes the character in front of the caret, and the caret follows it back.
+-   Point to the right or to the left to move the caret one command that way, and crank the forearm to move it faster – the same gestures that step the code, except that here nothing is executed. The caret goes all the way to the front, so code can be inserted before the very first character.
+-   Clap once to leave. You land back in the code editor, and the run is gone: cells cleared, output cleared, back to the start. Clap again to run the edited program.
+
 
 #### Keyboard commands
 

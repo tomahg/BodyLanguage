@@ -11,6 +11,13 @@ import time
 class Visualnterpreter:
     INTERPRETER_OFFSET_Y = 0
 
+    # How many lines of code fit on screen at once. Any more and the code would
+    # run into the output banner at y=320, so the window scrolls instead
+    MAX_VISIBLE_LINES = 8
+
+    # First line of code currently on screen
+    view_top = 0
+
     code = []
     jumpmap = {}
     cells = []
@@ -173,6 +180,20 @@ class Visualnterpreter:
         self.last_movement_forward = False
         return (finished, remember, char, line, output)
 
+    def scroll_into_view(self, line_number):
+        # Scroll the window the least it can to put this line on screen, the way
+        # a text editor follows the cursor rather than jumping about
+        if line_number == None:
+            return
+        if line_number < self.view_top:
+            self.view_top = line_number
+        elif line_number >= self.view_top + self.MAX_VISIBLE_LINES:
+            self.view_top = line_number - self.MAX_VISIBLE_LINES + 1
+        self.view_top = max(0, min(self.view_top, max(0, len(self.code) - self.MAX_VISIBLE_LINES)))
+
+    def is_on_screen(self, line_number):
+        return line_number != None and self.view_top <= line_number < self.view_top + self.MAX_VISIBLE_LINES
+
     def print_single_line_of_code(self, img, line_number, line_of_code, margin_h, color = (255,255,255)):
         line_height = 36
         line_margin_v = 8
@@ -202,18 +223,23 @@ class Visualnterpreter:
         line_margin_v = 8
         cv2.putText(img, line_of_code.strip(), (margin_h, line_number * line_height + margin_v + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
 
-    def debug_lines_of_code(self, img, margin_h):
-        if len(self.code) == 0:
+    def debug_lines_of_code(self, img, margin_h, minimum_lines = 0):
+        # Only the lines inside the window are drawn, so a long program does not
+        # spill over the output and the cells further down the screen
+        visible = self.code[self.view_top:self.view_top + self.MAX_VISIBLE_LINES]
+        lines = max(len(visible), minimum_lines)
+        if lines == 0:
             return
-        lines = len(self.code)
         self.draw_black_alpha_box(img, 0, self.INTERPRETER_OFFSET_Y, 40 * lines, img.shape[1])
-        for i, line_of_code in enumerate(self.code):
+        for i, line_of_code in enumerate(visible):
             self.debug_single_line_of_code(img, i, line_of_code, margin_h, self.INTERPRETER_OFFSET_Y)
 
     def highlight_debug_command(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
         if char_number == None or line_number == None:
             return
         if line_number >= len(self.code) or char_number >= len(self.code[line_number]):
+            return
+        if not self.is_on_screen(line_number):
             return
         line_height = 36
         line_margin_v = 8
@@ -224,7 +250,28 @@ class Visualnterpreter:
         else:
             offset = 0
         command = self.code[line_number][char_number]
-        cv2.putText(img, command, (margin_h + offset, self.INTERPRETER_OFFSET_Y + line_number * line_height + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+        row = line_number - self.view_top
+        cv2.putText(img, command, (margin_h + offset, self.INTERPRETER_OFFSET_Y + row * line_height + (line_height - line_margin_v)), cv2.FONT_HERSHEY_PLAIN, 2, color, 2)
+
+    # The caret of insert mode: a character height vertical bar standing in
+    # front of the command it points at, where the next command will land
+    def draw_caret(self, img, char_number, line_number, margin_h, color = (50, 205, 50)):
+        if not self.is_on_screen(line_number):
+            return
+        line_height = 36
+        line_margin_v = 8
+        line_of_code = self.code[line_number] if line_number < len(self.code) else ''
+        previous_code = line_of_code[:char_number]
+        if len(previous_code) > 0:
+            # Subtract 2, beacuse the measurement of an empty string apparently is 2
+            offset = self.get_text_width(previous_code, cv2.FONT_HERSHEY_PLAIN, 2, 2) - 2
+        else:
+            offset = 0
+        row = line_number - self.view_top
+        x = margin_h + offset
+        top = self.INTERPRETER_OFFSET_Y + row * line_height + line_margin_v - 2
+        bottom = self.INTERPRETER_OFFSET_Y + row * line_height + (line_height - line_margin_v) + 3
+        cv2.line(img, (x, top), (x, bottom), color, 2)
 
     # Print the first 8 cells
     #                   v
