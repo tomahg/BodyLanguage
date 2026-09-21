@@ -694,6 +694,16 @@ def main():
                             interpreter_error = True
                             interpreter_paused = True
 
+                        # Editing outside insert mode always happens at the end
+                        # of the code, so everything in front of the edit keeps
+                        # its place. What was deleted off the end does not: the
+                        # pointer, and the positions remembered for travelling
+                        # back in time, have no command left to stand on. Insert
+                        # mode keeps its own map of the code and puts its history
+                        # back by hand on the way out, so it is left alone here.
+                        if execute_code and not insert_mode:
+                            interpreter.clamp_to_code()
+
                 if SHOW_GRID_LINES:
                     cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
                     cv2.line(frame, (THRESHOLD_RIGHT_X, 0), (THRESHOLD_RIGHT_X, h), (111,111,111), 2)

@@ -159,6 +159,34 @@ class Visualnterpreter:
         self.last_movement_forward = True
         return False, True, self.code_pointer_char, self.code_pointer_line, output
 
+    def is_valid_position(self, char_number, line_number):
+        # A position a pointer can legally stand on. One past the end of a line
+        # counts, because that is where a program that has run to its end rests
+        if char_number == None or line_number == None:
+            return False
+        if line_number < 0 or line_number >= len(self.code):
+            return False
+        return 0 <= char_number <= len(self.code[line_number])
+
+    def clamp_to_code(self):
+        # The code was edited while a program was standing in it. Positions that
+        # pointed at commands which are gone now have nowhere to stand, so they
+        # are dropped, and the pointer follows the last position that survived.
+        # Cells and output are left alone: deleting a command does not un-run it.
+        self.history = [entry for entry in self.history
+                        if self.is_valid_position(entry[2], entry[3])]
+        if self.is_valid_position(self.code_pointer_char, self.code_pointer_line):
+            return
+        if len(self.history) > 0:
+            self.code_pointer_char = self.history[-1][2]
+            self.code_pointer_line = self.history[-1][3]
+        elif len(self.code) > 0:
+            self.code_pointer_char = len(self.code[-1])
+            self.code_pointer_line = len(self.code) - 1
+        else:
+            self.code_pointer_char = None
+            self.code_pointer_line = None
+
     def history_append(self, historic_output):
         if self.code_pointer_line < len(self.code) and self.code_pointer_char <= len(self.code[self.code_pointer_line]):
             self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
