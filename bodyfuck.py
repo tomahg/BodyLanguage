@@ -687,10 +687,12 @@ def main():
                     if code_changed:
                         ok, (interpreter_error_line, interpreter_error_char) = interpreter.build_jumpmap()
                         if ok:
+                            if interpreter_error:
+                                interpreter_paused = False
                             interpreter_error = False
-                        interpreter_paused = not ok
-                        if interpreter_paused:
+                        else:
                             interpreter_error = True
+                            interpreter_paused = True
 
                 if SHOW_GRID_LINES:
                     cv2.line(frame, (THRESHOLD_LEFT_X, 0), (THRESHOLD_LEFT_X, h), (111,111,111), 2)
