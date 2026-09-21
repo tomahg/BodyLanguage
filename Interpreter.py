@@ -90,7 +90,7 @@ class Visualnterpreter:
             if self.code_pointer_char == None:
                 self.code_pointer_char = 0
                 self.code_pointer_line = 0
-            elif len(self.code) >= self.code_pointer_line and self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
+            elif len(self.code) > self.code_pointer_line and self.code_pointer_char < len(self.code[self.code_pointer_line]) - 1:
                 self.code_pointer_char += 1
             elif self.code_pointer_line < len(self.code):
                 self.code_pointer_char = 0
@@ -160,7 +160,7 @@ class Visualnterpreter:
         return False, True, self.code_pointer_char, self.code_pointer_line, output
 
     def history_append(self, historic_output):
-        if self.code_pointer_line <= len(self.code) and self.code_pointer_char <= len(self.code[self.code_pointer_line]):
+        if self.code_pointer_line < len(self.code) and self.code_pointer_char <= len(self.code[self.code_pointer_line]):
             self.history.append((False, False, self.code_pointer_char, self.code_pointer_line, self.cell_pointer, self.cells[:], historic_output))
   
     def step_back(self):
