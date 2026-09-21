@@ -67,6 +67,7 @@ Notice the input is not implemented, neither by me nor Nikolaos Hanselmann
 
 -   Double increment: Raises both hands at the same time. Implemented because brainfuck/bodyfuck normally involves a lot of incrementing.
 -   Delete single character: Facepalming with your right hand. Implemented because humans make typos!
+-   Delete several characters: Keep the facepalm, hold the free arm's elbow out, and crank that forearm around it. The hand on your face picks the direction, so the crank always turns away from it: facepalm with the left hand and the right arm cranks to the right, deleting forwards, facepalm with the right hand and the left arm cranks to the left, backspacing. Implemented because humans make more than one typo.
 -   Single step code intepreter when paused: Point to the right with a straight right arm.
 -	Single step back when paused: Point to the left with a straight right arm to travel back in time!
 -   Fast stepping when paused: Point, then keep the elbow out and crank the forearm around it, the way the hand points, for at least half a turn. The faster you crank, the faster the code steps.
@@ -82,6 +83,7 @@ In the editor you can do the following
 
 -   Input code.
 -   Delete last character with the facepalm gesture.
+-   Delete a whole run of characters off the end: facepalm with your right hand and crank your left arm. There is nothing after the end of the code, so cranking the other way has nothing to delete until insert mode puts the caret inside the code.
 -   Delete all code with the double clap.
 -   Enter the interpreter with the single clap.
 -   Open insert mode, to add or remove code somewhere other than at the end, by folding your arms across your chest for a second.
@@ -112,6 +114,7 @@ In insert mode
 
 -   Any command gesture inserts that command at the caret. Groups of five +'es and -'es are re-counted around it, so a + dropped into the middle of a long run still reads correctly.
 -   Facepalm deletes the character in front of the caret, and the caret follows it back.
+-   Keep the facepalm and crank the free arm around the elbow to keep deleting, the same handle that steps the code. Facepalm with the right hand and crank the left arm to carry on backspacing, or facepalm with the left hand and crank the right arm to delete forwards instead, eating the code the caret stands in front of while the caret stays put. Half a turn gets the crank going, and the faster you crank the faster it deletes.
 -   Point to the right or to the left to move the caret one command that way, and crank the forearm to move it faster – the same gestures that step the code, except that here nothing is executed. The caret goes all the way to the front, so code can be inserted before the very first character.
 -   Clap once to leave, and you are back where you came from. Coming from the interpreter you land on the same command, still paused, with the same cells and the same output – so a typo can be fixed halfway through a run and the run carried on. Coming from the editor you simply land back in the editor.
 

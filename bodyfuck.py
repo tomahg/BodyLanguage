@@ -420,6 +420,15 @@ def delete_before_caret(code, caret):
         return code, caret
     return code[:caret - 1] + code[caret:], caret - 1
 
+def delete_at_caret(code, caret):
+    # Delete: the command the caret stands in front of goes, and the caret stays
+    # where it is, so the rest of the code slides back under it. Outside insert
+    # mode the caret is pinned to the end of the code, where there is nothing in
+    # front of it to delete.
+    if caret >= len(code):
+        return code, caret
+    return code[:caret] + code[caret + 1:], caret
+
 def is_arms_crossed(landmarks, elbow_left, elbow_right):
     # Both arms folded across the chest: the way into insert mode.
     #
@@ -462,14 +471,16 @@ def is_arms_crossed(landmarks, elbow_left, elbow_right):
     return swapped and chest_height and forearms_down and elbows_bent
 
 class ForearmSpin:
-    """Keeps the paused debugger stepping while a forearm is cranked around the elbow.
+    """Counts a forearm cranked around the elbow, in steps.
 
-    Only ever armed by the pointing gesture, so a crank has to start out from a
-    hand pointing the way it is about to turn. The turning has to follow the
-    pointing direction too, as if the hand rolled a wheel that way, which makes
-    the right arm turn clockwise and the left arm counter-clockwise. Every
+    Armed with a direction by whichever gesture owns it: pointing, to keep the
+    paused debugger stepping, or a facepalm, to keep deleting. The turning has
+    to follow that direction, as if the hand rolled a wheel that way, which
+    makes the right arm turn clockwise and the left arm counter-clockwise. Every
     SPIN_DEGREES_PER_STEP of turning is worth one step, so cranking twice as
-    fast steps twice as fast.
+    fast steps twice as fast. A crank has to get properly going before it is
+    worth anything, which is what keeps the single arm movement that armed it
+    from being counted as turning.
     """
 
     def __init__(self):
@@ -619,6 +630,7 @@ def main():
     # Steps the paused debugger owes: positive forwards, negative backwards
     pending_steps = 0
     forearm_spin = ForearmSpin()
+    delete_spin = ForearmSpin()
     interpreter = Visualnterpreter()
     interpreter.step_interval_seconds = INTERPRETER_STEP_SECONDS
     interpreter.loop_step_interval_seconds = INTERPRETER_LOOP_STEP_SECONDS
@@ -812,19 +824,58 @@ def main():
                     left_arm_down = landmarks[PoseLandmark.LEFT_WRIST][2] > landmarks[PoseLandmark.LEFT_SHOULDER][2] + half_upper_arm
                     right_arm_down = landmarks[PoseLandmark.RIGHT_WRIST][2] > landmarks[PoseLandmark.RIGHT_SHOULDER][2] + half_upper_arm
 
+                    # The facepalm is worked out up front, because it is wanted
+                    # twice: further down the chain it deletes a single command,
+                    # and here it arms the crank that deletes several. Remember
+                    # that left and right are mirrored.
+                    right_hand_facepalm = is_facepalm(landmarks, PoseLandmark.LEFT_INDEX)
+                    left_hand_facepalm = is_facepalm(landmarks, PoseLandmark.RIGHT_INDEX)
+                    facepalm = right_hand_facepalm or left_hand_facepalm
+
+                    # Deleting more than one command: with a facepalm registered,
+                    # the free arm is cranked around the elbow to keep deleting.
+                    # The hand on the face picks the direction, so the crank
+                    # always turns away from it: facepalm with the left hand and
+                    # the right arm cranks to the right, deleting forwards;
+                    # facepalm with the right hand and the left arm cranks to the
+                    # left, backspacing. Both hands on the face leave no arm to
+                    # crank, and say nothing about which way to delete.
+                    if left_hand_facepalm and not right_hand_facepalm:
+                        delete_spin.arm(1)
+                    elif right_hand_facepalm and not left_hand_facepalm:
+                        delete_spin.arm(-1)
+                    else:
+                        delete_spin.disarm()
+
+                    # A crank can be worth more than a single delete per frame
+                    deleting_forwards = delete_spin.direction > 0
+                    for _ in range(delete_spin.update(landmarks, upper_arm, now)):
+                        if deleting_forwards:
+                            code, caret = delete_at_caret(code, caret)
+                        else:
+                            code, caret = delete_before_caret(code, caret)
+
                     # Fast stepping: cranking the forearm around the elbow, having
-                    # first pointed the way, keeps the paused debugger stepping
-                    if insert_mode or (execute_code and interpreter_paused):
+                    # first pointed the way, keeps the paused debugger stepping.
+                    # An arm cannot step and delete at the same time, so for as
+                    # long as a hand is on the face the crank belongs to deleting
+                    if (insert_mode or (execute_code and interpreter_paused)) and not facepalm:
                         pending_steps += forearm_spin.update(landmarks, upper_arm, now) * forearm_spin.direction
                     else:
                         forearm_spin.disarm()
 
-                    # Cranking is a debugger gesture, not code input, so while it
-                    # lasts the rest of the command chain is deliberately skipped:
-                    # an arm swinging past the raise and duck poses neither types
-                    # anything nor draws a command on screen.
-                    if forearm_spin.is_spinning(now):
-                        pass
+                    # Cranking is a debugger or an editing gesture, not code
+                    # input, so while it lasts the rest of the command chain is
+                    # deliberately skipped: an arm swinging past the raise and
+                    # duck poses neither types anything nor draws a command on
+                    # screen. Drawing the facepalm speech bubble is one of the
+                    # things being skipped, so a crank that is deleting keeps it
+                    # up itself, and a run of deletes looks like the single
+                    # delete it repeats.
+                    if forearm_spin.is_spinning(now) or delete_spin.is_spinning(now):
+                        if delete_spin.is_spinning(now):
+                            speech_bubble.draw(frame, landmarks[PoseLandmark.MOUTH_RIGHT][1],
+                                               landmarks[PoseLandmark.MOUTH_RIGHT][2], half_upper_arm)
 
                     # Arms folded across the chest, opening insert mode, where
                     # commands land at the caret instead of at the end of the
@@ -890,6 +941,28 @@ def main():
                             if last_command == '<--' and now - command_started_at >= STEP_HOLD_SECONDS:
                                 last_command = 'stepped'
                                 pending_steps = -1
+
+                    # Facepalm
+                    # Index finger horizontally between the outer eyes, above eyes, not too far above head
+                    #
+                    # Sits above the raise poses because they go by wrist height
+                    # alone, and the arm cranked around its elbow to delete more
+                    # than one command swings its wrist up as high as a raise
+                    # does. Deleting is what a hand on the face is for, so while
+                    # one is there a wrist that high is not a + or a ++. That
+                    # also covers the wind-up, before the crank has turned far
+                    # enough to count as turning and skip the rest of the chain
+                    # on its own.
+                    elif facepalm:
+                        if last_command != '⌫':
+                            if facepalm_lock == 0:
+                                facepalm_lock = 1
+                                command_started_at = now
+                                code, caret = delete_before_caret(code, caret)
+                            last_command = '⌫'
+                        bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
+                        bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
+                        speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
 
                     # Double-up, not included in original spec
                     elif landmarks[PoseLandmark.LEFT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm and landmarks[PoseLandmark.RIGHT_WRIST][2] < landmarks[PoseLandmark.NOSE][2] - upper_arm: 
@@ -966,19 +1039,6 @@ def main():
                             # ] is strangely large, print it a little smaller, and further up, than other commands
                             cv2.putText(frame, ']', (280+20, 200-25), cv2.FONT_HERSHEY_PLAIN, FONT_SIZE - 5, (0,0,255), FONT_WEIGHT)   
 
-                    # Facepalm
-                    # Index finger horizontally between the outer eyes, above eyes, not too far above head
-                    elif is_facepalm(landmarks, PoseLandmark.LEFT_INDEX) \
-                            or is_facepalm(landmarks, PoseLandmark.RIGHT_INDEX):
-                        if last_command != '⌫':
-                            if facepalm_lock == 0:
-                                facepalm_lock = 1
-                                command_started_at = now
-                                code, caret = delete_before_caret(code, caret)
-                            last_command = '⌫'
-                        bubble_x = landmarks[PoseLandmark.MOUTH_RIGHT][1]
-                        bubble_y = landmarks[PoseLandmark.MOUTH_RIGHT][2]
-                        speech_bubble.draw(frame, bubble_x, bubble_y, half_upper_arm)
                     else:
                         if last_command in ['<','>']:
                             code, caret = insert_at_caret(code, caret, last_command)
