@@ -389,24 +389,6 @@ def code_pointer_to_raw(char_number, line_number, offsets, lines, starts):
     formatted_index = starts[line_number] + min(char_number, len(lines[line_number]))
     return min(bisect.bisect_left(offsets, formatted_index), len(offsets) - 1)
 
-def raw_to_code_pointer(raw, offsets, lines, starts):
-    # And back again, once editing has moved the commands about
-    if raw < 0 or len(lines) == 0:
-        return -1, 0
-    if raw >= len(offsets) - 1:
-        # Off the end of the code, where a program that has run to its end stands
-        return len(lines[-1]), len(lines) - 1
-    return caret_line_and_char(raw, offsets, lines, starts)
-
-def shift_position(position, edited_at, moved):
-    # Where a remembered position ends up after an edit. Anything in front of
-    # the edit stays where it is; everything from the edit onwards is dragged
-    # along by however many commands were added or taken away. A command deleted
-    # from under a position leaves that position on the command before it.
-    if position < edited_at:
-        return position
-    return position + moved
-
 def insert_at_caret(code, caret, command):
     # Outside insert mode the caret is pinned to the end of the code, so this is
     # the plain append it has always been
@@ -597,13 +579,6 @@ def main():
     insert_mode = False
     lines_of_code = []
     line_starts = []
-    # While insert mode is open, where the interpreter stands in the code, and
-    # every position it remembers for travelling back in time, are held as
-    # positions in the raw code, so that editing can move them along with the
-    # commands they point at
-    pointer_raw = -1
-    history_raw = []
-    code_before_edit = ''
     # Where the highlighted command is, kept between frames because the
     # interpreter only reports it on the frames it actually steps
     c, l = 0, 0
@@ -668,18 +643,6 @@ def main():
                 THRESHOLD_LEFT_X = 640 - THRESHOLD_EDGE
                 THRESHOLD_RIGHT_X = THRESHOLD_EDGE
 
-                # An edit moves every command after it along, so the place the
-                # interpreter stands in the code, and every place it remembers,
-                # have to move too, or they end up pointing at the wrong command.
-                # Only one command is ever inserted or deleted at a time, which
-                # is enough to work out where the edit happened from the caret.
-                if insert_mode and code != code_before_edit:
-                    moved = len(code) - len(code_before_edit)
-                    edited_at = caret - moved if moved > 0 else caret
-                    pointer_raw = shift_position(pointer_raw, edited_at, moved)
-                    history_raw = [shift_position(p, edited_at, moved) for p in history_raw]
-                code_before_edit = code
-
                 # The formatting is worked out fresh from the raw code every
                 # frame, so a command inserted into the middle of a long run of
                 # + regroups the whole run without anyone having to think about it
@@ -710,10 +673,8 @@ def main():
                         # of the code, so everything in front of the edit keeps
                         # its place. What was deleted off the end does not: the
                         # pointer, and the positions remembered for travelling
-                        # back in time, have no command left to stand on. Insert
-                        # mode keeps its own map of the code and puts its history
-                        # back by hand on the way out, so it is left alone here.
-                        if execute_code and not insert_mode:
+                        # back in time, have no command left to stand on.
+                        if execute_code:
                             interpreter.clamp_to_code()
 
                 if SHOW_GRID_LINES:
@@ -893,17 +854,16 @@ def main():
                             pending_steps = 0
                             forearm_spin.disarm()
                             if execute_code:
-                                pointer_raw = code_pointer_to_raw(interpreter.code_pointer_char, interpreter.code_pointer_line, caret_offsets, lines_of_code, line_starts)
-                                history_raw = [code_pointer_to_raw(char, line, caret_offsets, lines_of_code, line_starts)
-                                               for _, _, char, line, _, _, _ in interpreter.history]
                                 # The highlighted command has just run, so the
                                 # caret goes right after it
+                                pointer_raw = code_pointer_to_raw(interpreter.code_pointer_char, interpreter.code_pointer_line, caret_offsets, lines_of_code, line_starts)
                                 caret = min(pointer_raw + 1, len(code))
+                                # Editing pulls the code out from under the run,
+                                # so the run is stopped, as if by a double clap
+                                execute_code = False
+                                interpreter_paused = False
                             else:
-                                pointer_raw = -1
-                                history_raw = []
                                 caret = len(code)
-                            code_before_edit = code
 
                     # Arms out, printing
                     elif elbows_straight and left_arm_horizonal and right_arm_horizonal:
@@ -1144,21 +1104,6 @@ def main():
                                     forearm_spin.disarm()
                                     clap_count = 0
                                     clap_stage = ''
-                                    if execute_code:
-                                        # Back to the interpreter, standing on
-                                        # the same command, still paused, with
-                                        # the cells and the output it had. The
-                                        # edit shuffled the code about, so every
-                                        # remembered position is put back where
-                                        # the command it points at ended up.
-                                        c, l = raw_to_code_pointer(pointer_raw, caret_offsets, lines_of_code, line_starts)
-                                        interpreter.code_pointer_char = c
-                                        interpreter.code_pointer_line = l
-                                        interpreter.history = [
-                                            (finished_then, remember, *raw_to_code_pointer(position, caret_offsets, lines_of_code, line_starts), pointer, cells, out)
-                                            for (finished_then, remember, _, _, pointer, cells, out), position
-                                            in zip(interpreter.history, history_raw)]
-                                        interpreter_paused = True
                                 # Pause / resume debugger immediately, without waiting for potential second clap
                                 elif execute_code and not pause and (interpreter_paused or not interpreter_finished_debug_and_print):
                                     if interpreter_paused:

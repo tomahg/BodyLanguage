@@ -108,7 +108,7 @@ Note: When live coding, the interpreter will halt if your code contains incomple
 
 Everything above adds code to the end of the program, which is all the original bodyfuck can do. One wrong character halfway through, and there was nothing for it but to start over. Insert mode puts a caret in the code instead, and commands land there.
 
-Stop where you want to work: clap to pause the running code, then step to the exact character with the pointing gesture, or crank the forearm to travel further. Fold your arms across your chest, hold it for a second, and insert mode opens. A green caret appears, standing just after the character that ran last, and the highlighted command, the cells and the output all disappear – nothing runs while you are editing.
+Stop where you want to work: clap to pause the running code, then step to the exact character with the pointing gesture, or crank the forearm to travel further. Fold your arms across your chest, hold it for a second, and insert mode opens. A green caret appears, standing just after the character that ran last, and the run is stopped – the code has changed under it, so there is nothing sensible to carry on from.
 
 In insert mode
 
@@ -116,7 +116,7 @@ In insert mode
 -   Facepalm deletes the character in front of the caret, and the caret follows it back.
 -   Keep the facepalm and crank the free arm around the elbow to keep deleting, the same handle that steps the code. Facepalm with the right hand and crank the left arm to carry on backspacing, or facepalm with the left hand and crank the right arm to delete forwards instead, eating the code the caret stands in front of while the caret stays put. Half a turn gets the crank going, and the faster you crank the faster it deletes.
 -   Point to the right or to the left to move the caret one command that way, and crank the forearm to move it faster – the same gestures that step the code, except that here nothing is executed. The caret goes all the way to the front, so code can be inserted before the very first character.
--   Clap once to leave, and you are back where you came from. Coming from the interpreter you land on the same command, still paused, with the same cells and the same output – so a typo can be fixed halfway through a run and the run carried on. Coming from the editor you simply land back in the editor.
+-   Clap once to leave, and you are back in the editor. Clap again to run the code from the start.
 
 
 #### Keyboard commands
